@@ -58,9 +58,15 @@ except FileNotFoundError:
 
 # the grid space of hyperparameters to search over
 p_space = {
-    'activation': ['relu', 'tanh', 'sigmoid'], # the possible activation functions that can be used in each layer
+    #'activation': ['relu', 'tanh', 'sigmoid'], # the possible activation functions that can be used in each layer
     'weight_initializer': ['he_normal'], # the possible weight initializer that can be used in each layer
     'num_layers': list(range(0,3)) # the possible number of layers that can be used in the model
+}
+
+activation_mapping = {
+    0: 'relu',
+    1: 'tanh',
+    2: 'sigmoid'
 }
 
 p_space = list(product(*p_space.values())) # get combinations of the hyperparameters in the search space
@@ -68,12 +74,14 @@ start = datetime.time(datetime.now())
 
 # iterate over each combination
 for combo in p_space:
-    activation, weight_initializer, num_layers = combo
+    weight_initializer, num_layers = combo
     bounds = [] # initialize a list bounds for search space for Bayesian Optimization
     for i in range(num_layers): # add dropout ranges based on number of layers
         bounds.append({'name': 'dropout' + str(i + 1), 'type': 'discrete', 'domain': numpy.arange(0, 0.6, 0.1)})
     for i in range(num_layers): # add number of neurons ranges based on number of layers
         bounds.append({'name': 'num_neurons' + str(i + 1), 'type': 'discrete', 'domain': [2 ** j for j in range(6, 11)]})
+
+    bounds.append({'name': 'activation', 'type': 'discrete', 'domain': [0, 1, 2]})
 
     history = None
     neurons = None
@@ -85,12 +93,13 @@ for combo in p_space:
         global dropouts # make dropouts accessible outside the function
         dropouts = [float(x[:, i]) for i in range(0, num_layers)] # get the values of dropouts currently selected
         neurons = [int(x[:, i]) for i in range(num_layers, len(bounds))] # get the values of num_neurons currently selected
+        activation_fn = activation_mapping[int(x[:, -1])] # get the activation function
 
         model = get_model(
             dropout=dropouts,
             num_layers=num_layers,
             num_neurons= neurons,
-            activation=activation,
+            activation=activation_fn,
             weight_initializer=weight_initializer
         ) # get the model with the current set of hyperparameters
 
