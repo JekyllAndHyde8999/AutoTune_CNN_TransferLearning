@@ -24,16 +24,16 @@ base_model = ResNet50(weights="imagenet")
 
 for i in range(NUMBER_OF_FROZEN_LAYERS):
     base_model.layers[i].trainable = False
-
+#base_model.summary()
 print(f'Froze {NUMBER_OF_FROZEN_LAYERS} layers in the model.')
 
 bounds = [
     {'name': 'conv1_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
-    {'name': 'conv1_num_filters', 'type': 'discrete', 'domain': [3, 5]},
-    {'name': 'conv1_stride_size', 'type': 'discrete', 'domain': [1, 2, 3]},
+    {'name': 'conv1_num_filters', 'type': 'discrete', 'domain': [32, 64, 128,512]},
+    {'name': 'conv1_stride_size', 'type': 'discrete', 'domain': [1, 2]},
     {'name': 'conv2_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
-    {'name': 'conv2_stride_size', 'type': 'discrete', 'domain': [1, 2, 3]},
-    {'name': 'conv2_num_filters', 'type': 'discrete', 'domain': [3, 5]},
+    {'name': 'conv2_stride_size', 'type': 'discrete', 'domain': [1, 2]},
+    {'name': 'conv2_num_filters', 'type': 'discrete', 'domain': [32, 64, 128,512]},
     {'name': 'max_pooling_filter_size', 'type': 'discrete', 'domain': [2, 3]},
     {'name': 'number_occurrences', 'type': 'discrete', 'domain': range(3, 6)}
 ]
@@ -41,17 +41,19 @@ bounds = [
 
 def get_model(conv1_filter_size, conv1_num_filters, conv1_stride_size, conv2_filter_size, conv2_num_filters, conv2_stride_size, max_pooling_filter_size, number_occurrences):
     X = base_model.layers[NUMBER_OF_FROZEN_LAYERS - 1].output
-    X = layers.ZeroPadding2D(padding=(conv1_filter_size, conv1_filter_size))(X)
-
+    X = layers.ZeroPadding2D(padding=(12,12))(X)
+    print(X.shape)
     for _ in range(number_occurrences):
         X = layers.Conv2D(filters=conv1_num_filters, kernel_size=(conv1_filter_size, conv1_filter_size), strides=(conv1_stride_size, conv1_stride_size), activation='relu')(X)
+        print(X.shape)
         #X = layers.SeparableConv2D(filters=conv2_num_filters, filter_size=(conv2_filter_size, conv2_filter_size), strides=(conv2_stride_size, conv2_stride_size), activation='relu')(X)
-        X = layers.MaxPooling2D(pool_size=max_pooling_filter_size)(X)
+        #X = layers.MaxPooling2D(pool_size=max_pooling_filter_size)(X)
 
     X = layers.Flatten()(X)
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax')(X)
 
     model = models.Model(inputs=base_model.inputs, outputs=X)
+    model.summary()
     return model
 
 
@@ -77,10 +79,11 @@ def model_fit(x):
         number_occurrences=number_occurrences
     )
 
-    temp_model.compile(optimizer='adam', loss='categorical_crossentropy')
+    temp_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    #temp_model.summary()
     history = temp_model.fit_generator(
         train_generator,
-        valid_generator=valid_generator, epochs=20,
+        validation_data=valid_generator, epochs=20,
         steps_per_epoch=len(train_generator) / batch_size,
         validation_steps=len(valid_generator)
     )
