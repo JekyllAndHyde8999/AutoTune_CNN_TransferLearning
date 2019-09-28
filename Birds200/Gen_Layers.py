@@ -41,7 +41,7 @@ bounds = [
 
 def get_model(conv1_filter_size, conv1_num_filters, conv1_stride_size, conv2_filter_size, conv2_num_filters, conv2_stride_size, max_pooling_filter_size, number_occurrences):
     X = base_model.layers[NUMBER_OF_FROZEN_LAYERS - 1].output
-    X = layers.ZeroPadding2D(padding=(conv1_filter_size, conv1_filter_size))
+    X = layers.ZeroPadding2D(padding=(conv1_filter_size, conv1_filter_size))(X)
 
     for _ in range(number_occurrences):
         X = layers.Conv2D(filters=conv1_num_filters, kernel_size=(conv1_filter_size, conv1_filter_size), strides=(conv1_stride_size, conv1_stride_size), activation='relu')(X)
