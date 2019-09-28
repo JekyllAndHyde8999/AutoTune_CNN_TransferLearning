@@ -18,26 +18,26 @@ datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.res
 train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for training data
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
-NUMBER_OF_FROZEN_LAYERS = 151 # can change later
+NUMBER_OF_FROZEN_LAYERS = 150 # can change later
 #MODEL_FILE_NAME = None
 base_model = ResNet50(weights="imagenet")
 #base_model = models.load_model(MODEL_FILE_NAME)
 
 for i in range(NUMBER_OF_FROZEN_LAYERS):
     base_model.layers[i].trainable = False
-#base_model.summary()
+base_model.summary()
 print(f'Froze {NUMBER_OF_FROZEN_LAYERS} layers in the model.')
 
 # creating callbacks for the model
 reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=np.sqrt(0.1), cooldown=0, patience=5, min_lr=0.5e-10)
 
 bounds = [
-    {'name': 'conv1_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
+    {'name': 'conv1_filter_size', 'type': 'discrete', 'domain': [1, 3]},
     {'name': 'conv1_num_filters', 'type': 'discrete', 'domain': [32, 64, 128,512]},
     {'name': 'conv1_stride_size', 'type': 'discrete', 'domain': [1, 2]},
-    {'name': 'conv2_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
+    {'name': 'conv2_filter_size', 'type': 'discrete', 'domain': [1, 3]},
     {'name': 'conv2_stride_size', 'type': 'discrete', 'domain': [1, 2]},
-    {'name': 'conv2_num_filters', 'type': 'discrete', 'domain': [32, 64, 128,512]},
+    {'name': 'conv2_num_filters', 'type': 'discrete', 'domain': [32, 64, 128, 512]},
     {'name': 'max_pooling_filter_size', 'type': 'discrete', 'domain': [2, 3]},
     {'name': 'number_occurrences', 'type': 'discrete', 'domain': range(3, 6)}
 ]
@@ -45,7 +45,7 @@ bounds = [
 
 def get_model(conv1_filter_size, conv1_num_filters, conv1_stride_size, conv2_filter_size, conv2_num_filters, conv2_stride_size, max_pooling_filter_size, number_occurrences):
     X = base_model.layers[NUMBER_OF_FROZEN_LAYERS - 1].output
-    X = layers.ZeroPadding2D(padding=(12,12))(X)
+    X = layers.Conv2D(filters=256, kernel_size=(1,1), strides=(conv1_stride_size, conv1_stride_size), activation='relu')(X)
     print(X.shape)
     for _ in range(number_occurrences):
         X = layers.Conv2D(filters=conv1_num_filters, kernel_size=(conv1_filter_size, conv1_filter_size), strides=(conv1_stride_size, conv1_stride_size), activation='relu')(X)
@@ -83,14 +83,14 @@ def model_fit(x):
         number_occurrences=number_occurrences
     )
 
-    temp_model.compile(optimizer=optimizers.Adam(learning_rate=0.1), loss='categorical_crossentropy',
-                            metrics=['accuracy'], callbacks=[reduce_LR])
+    temp_model.compile(optimizer=optimizers.Adam(0.1), loss='categorical_crossentropy',
+                            metrics=['accuracy'])
     #temp_model.summary()
     history = temp_model.fit_generator(
         train_generator,
         validation_data=valid_generator, epochs=20,
         steps_per_epoch=len(train_generator) / batch_size,
-        validation_steps=len(valid_generator)
+        validation_steps=len(valid_generator), callbacks=[reduce_LR]
     )
 
     return min(history.history['val_loss']) # return value of the function
