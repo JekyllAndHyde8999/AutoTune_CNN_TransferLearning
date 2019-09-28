@@ -34,7 +34,7 @@ bounds = [
     {'name': 'conv2_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
     {'name': 'conv2_stride_size', 'type': 'discrete', 'domain': [1, 2, 3]},
     {'name': 'conv2_num_filters', 'type': 'discrete', 'domain': [3, 5]},
-    {'name': 'max_pooling_filter_size', 'type': 'discrete', 'domain': [3, 5]},
+    {'name': 'max_pooling_filter_size', 'type': 'discrete', 'domain': [2, 3]},
     {'name': 'number_occurrences', 'type': 'discrete', 'domain': range(3, 6)}
 ]
 
