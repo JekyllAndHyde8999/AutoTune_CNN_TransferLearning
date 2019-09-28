@@ -26,12 +26,6 @@ for i in range(NUMBER_OF_FROZEN_LAYERS):
 
 print(f'Froze {NUMBER_OF_FROZEN_LAYERS} layers in the model.')
 
-activation_mapping = {
-    0: 'relu',
-    1: 'tanh',
-    2: 'sigmoid'
-}
-
 bounds = [
     {'name': 'conv1_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
     {'name': 'conv1_num_filters', 'type': 'discrete', 'domain': [3, 5]},
@@ -40,17 +34,17 @@ bounds = [
     {'name': 'conv2_stride_size', 'type': 'discrete', 'domain': [1, 2, 3]},
     {'name': 'conv2_num_filters', 'type': 'discrete', 'domain': [3, 5]},
     {'name': 'max_pooling_filter_size', 'type': 'discrete', 'domain': [3, 5]},
-    {'name': 'activation', 'type': 'discrete', 'domain': [0, 1, 2]}
     {'name': 'number_occurrences', 'type': 'discrete', 'domain': range(3, 6)}
 ]
 
 
-def get_model(conv1_filter_size, conv1_stride_size, conv2_filter_size, conv2_stride_size, max_pooling_filter_size, activation, number_occurrences):
+def get_model(conv1_filter_size, conv1_stride_size, conv2_filter_size, conv2_stride_size, max_pooling_filter_size, number_occurrences):
     X = base_model.layers[NUMBER_OF_FROZEN_LAYERS - 1].output
+    X = layers.ZeroPadding2D(padding=(conv1_filter_size, conv1_filter_size))
 
     for _ in range(number_occurrences):
-        X = layers.Conv2D(filters=conv1_num_filters, filter_size=(conv1_filter_size, conv1_filter_size), strides=(conv1_stride_size, conv1_stride_size), activation=activation)(X)
-        X = layers.Conv2D(filters=conv2_num_filters, filter_size=(conv2_filter_size, conv2_filter_size), strides=(conv2_stride_size, conv2_stride_size), activation=activation)(X)
+        X = layers.Conv2D(filters=conv1_num_filters, filter_size=(conv1_filter_size, conv1_filter_size), strides=(conv1_stride_size, conv1_stride_size), activation='relu')(X)
+        X = layers.SeparableConv2D(filters=conv2_num_filters, filter_size=(conv2_filter_size, conv2_filter_size), strides=(conv2_stride_size, conv2_stride_size), activation='relu')(X)
         X = layers.MaxPooling2D(pool_size=max_pooling_filter_size)(X)
 
     X = layers.Flatten()(X)
