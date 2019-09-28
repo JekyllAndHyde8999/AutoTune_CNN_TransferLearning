@@ -63,8 +63,8 @@ def model_fit(x):
     conv2_num_filters = int(x[:, 4])
     conv2_stride_size = int(x[:, 5])
     max_pooling_filter_size = int(x[:, 6])
-    activation = activation_mapping[int(x[:, 7])]
-    number_occurrences = int(x[:, 8])
+    activation = 'relu'
+    number_occurrences = int(x[:, 7])
 
     temp_model = get_model(
         conv1_filter_size=conv1_filter_size,
@@ -74,7 +74,6 @@ def model_fit(x):
         conv2_num_filters=conv2_num_filters,
         conv2_stride_size=conv2_stride_size,
         max_pooling_filter_size=max_pooling_filter_size,
-        activation=activation,
         number_occurrences=number_occurrences
     )
 
