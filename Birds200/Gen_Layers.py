@@ -39,7 +39,7 @@ bounds = [
 ]
 
 
-def get_model(conv1_filter_size, conv1_stride_size, conv2_filter_size, conv2_stride_size, max_pooling_filter_size, number_occurrences):
+def get_model(conv1_filter_size, conv1_num_filters, conv1_stride_size, conv2_filter_size, conv2_num_filters, conv2_stride_size, max_pooling_filter_size, number_occurrences):
     X = base_model.layers[NUMBER_OF_FROZEN_LAYERS - 1].output
     X = layers.ZeroPadding2D(padding=(conv1_filter_size, conv1_filter_size))
 
