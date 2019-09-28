@@ -3,8 +3,9 @@ import numpy as np
 import GPyOpt
 import keras
 from keras.preprocessing import image
-from keras import layers, models
+from keras import layers, models, optimizers, callbacks
 from keras.applications import ResNet50
+
 DATA_FOLDER = "/home/deb/Sravan/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
@@ -26,6 +27,9 @@ for i in range(NUMBER_OF_FROZEN_LAYERS):
     base_model.layers[i].trainable = False
 #base_model.summary()
 print(f'Froze {NUMBER_OF_FROZEN_LAYERS} layers in the model.')
+
+# creating callbacks for the model
+reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc')
 
 bounds = [
     {'name': 'conv1_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
@@ -79,7 +83,8 @@ def model_fit(x):
         number_occurrences=number_occurrences
     )
 
-    temp_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    temp_model.compile(optimizer=optimizers.Adam(learning_rate=0.1), loss='categorical_crossentropy',
+                            metrics=['accuracy'], callbacks=[reduce_LR])
     #temp_model.summary()
     history = temp_model.fit_generator(
         train_generator,
