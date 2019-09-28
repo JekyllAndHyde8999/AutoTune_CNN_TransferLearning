@@ -44,7 +44,7 @@ def get_model(conv1_filter_size, conv1_num_filters, conv1_stride_size, conv2_fil
     X = layers.ZeroPadding2D(padding=(conv1_filter_size, conv1_filter_size))
 
     for _ in range(number_occurrences):
-        X = layers.Conv2D(filters=conv1_num_filters, filter_size=(conv1_filter_size, conv1_filter_size), strides=(conv1_stride_size, conv1_stride_size), activation='relu')(X)
+        X = layers.Conv2D(filters=conv1_num_filters, kernel_size=(conv1_filter_size, conv1_filter_size), strides=(conv1_stride_size, conv1_stride_size), activation='relu')(X)
         #X = layers.SeparableConv2D(filters=conv2_num_filters, filter_size=(conv2_filter_size, conv2_filter_size), strides=(conv2_stride_size, conv2_stride_size), activation='relu')(X)
         X = layers.MaxPooling2D(pool_size=max_pooling_filter_size)(X)
 
