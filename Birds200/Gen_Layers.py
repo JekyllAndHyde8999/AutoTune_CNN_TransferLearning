@@ -1,28 +1,29 @@
 import os
 import numpy as np
-import GPyOpt, Gpy
-
+import GPyOpt
+import keras
+from keras.preprocessing import image
 from keras import layers, models
-
-DATA_FOLDER = "Birds200"
+from keras.applications import ResNet50
+DATA_FOLDER = "/home/deb/Sravan/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
-RESULTS_PATH = os.path.join("AutoFC_DenseNet", "AutoFC_DenseNet_log_" + DATA_FOLDER + "_bayes_opt_v5.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoFC_ResNet", "AutoFC_ResNet_log_" + DATA_FOLDER + "_bayes_opt_v5.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
-datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.vgg16.preprocess_input) # creating an instance of the data generator
+datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.resnet50.preprocess_input) # creating an instance of the data generator
 train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for training data
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
-NUMBER_OF_FROZEN_LAYERS = 42 # can change later
-MODEL_FILE_NAME = None
-
-base_model = models.load_model(MODEL_FILE_NAME)
+NUMBER_OF_FROZEN_LAYERS = 151 # can change later
+#MODEL_FILE_NAME = None
+base_model = ResNet50(weights="imagenet")
+#base_model = models.load_model(MODEL_FILE_NAME)
 
 for i in range(NUMBER_OF_FROZEN_LAYERS):
-    model.layers[i].trainable = False
+    base_model.layers[i].trainable = False
 
 print(f'Froze {NUMBER_OF_FROZEN_LAYERS} layers in the model.')
 
