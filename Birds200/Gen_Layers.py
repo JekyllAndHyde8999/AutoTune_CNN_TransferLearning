@@ -29,7 +29,7 @@ for i in range(NUMBER_OF_FROZEN_LAYERS):
 print(f'Froze {NUMBER_OF_FROZEN_LAYERS} layers in the model.')
 
 # creating callbacks for the model
-reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc')
+reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=np.sqrt(0.1), cooldown=0, patience=5, min_lr=0.5e-10)
 
 bounds = [
     {'name': 'conv1_filter_size', 'type': 'discrete', 'domain': [1, 3, 5]},
