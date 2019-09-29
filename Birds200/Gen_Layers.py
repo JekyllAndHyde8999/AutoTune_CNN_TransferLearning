@@ -18,7 +18,7 @@ datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.res
 train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for training data
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
-NUMBER_OF_FROZEN_LAYERS = 150 # can change later
+NUMBER_OF_FROZEN_LAYERS = 143 # can change later
 #MODEL_FILE_NAME = None
 base_model = ResNet50(weights="imagenet")
 #base_model = models.load_model(MODEL_FILE_NAME)
@@ -27,6 +27,14 @@ for i in range(NUMBER_OF_FROZEN_LAYERS):
     base_model.layers[i].trainable = False
 base_model.summary()
 print(f'Froze {NUMBER_OF_FROZEN_LAYERS} layers in the model.')
+
+
+try:
+    log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
+except FileNotFoundError:
+    log_df = pd.DataFrame(columns=['index', 'activation', 'weight_initializer', 'dropout', 'num_neurons', 'num_layers', 'train_loss', 'train_acc', 'val_loss', 'val_acc'])
+    log_df = log_df.set_index('index')
+
 
 # creating callbacks for the model
 reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=np.sqrt(0.1), cooldown=0, patience=5, min_lr=0.5e-10)
@@ -93,6 +101,8 @@ def model_fit(x):
         validation_steps=len(valid_generator), callbacks=[reduce_LR]
     )
 
+    log_tuple = (activation, weight_initializer, dropouts, neurons, num_layers, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+    log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
     return min(history.history['val_loss']) # return value of the function
 
 
