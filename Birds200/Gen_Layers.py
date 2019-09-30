@@ -103,6 +103,7 @@ def model_fit(x):
 
     log_tuple = (activation, weight_initializer, dropouts, neurons, num_layers, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
     log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
+    log_df.to_csv(RESULTS_PATH) # save the dataframe in a CSV file
     return min(history.history['val_loss']) # return value of the function
 
 
