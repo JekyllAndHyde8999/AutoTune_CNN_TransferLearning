@@ -101,6 +101,7 @@ def model_fit(x):
         validation_steps=len(valid_generator), callbacks=[reduce_LR]
     )
 
+    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
     log_tuple = (activation, weight_initializer, dropouts, neurons, num_layers, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
     log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
     log_df.to_csv(RESULTS_PATH) # save the dataframe in a CSV file
