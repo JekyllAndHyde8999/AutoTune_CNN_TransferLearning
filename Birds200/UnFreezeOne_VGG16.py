@@ -50,7 +50,7 @@ def get_model(model, **kwargs):
         filter_size, num_filters, stride_size = map(lambda x: x[1], conv_params)
         X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size), activation='tanh')(X)
 
-    return models.Model(inputs=model, outputs=X)
+    return models.Model(inputs=model.inputs, outputs=X)
 
 # initialise bounds list
 bounds = []
