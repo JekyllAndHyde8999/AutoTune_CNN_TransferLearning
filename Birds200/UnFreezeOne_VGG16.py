@@ -46,7 +46,7 @@ def get_model(model, **kwargs):
             upsampling_factor = math.ceil(5 / X.shape[1])
             X = layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))(X)
 
-        conv_params = filter(lambda x: x[0].endswith(str(i)), kwargs.items())
+        conv_params = filter(lambda x: x[0].endswith(str(i + 1)), kwargs.items())
         filter_size, num_filters, stride_size = map(lambda x: x[1], conv_params)
         X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size), activation='tanh')(X)
 
