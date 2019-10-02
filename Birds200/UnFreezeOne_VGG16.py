@@ -87,13 +87,13 @@ for iter_ in range(1, len(base_model.layers) + 1):
         hyper_params = {}
         i = 0
         while i < len(bounds):
-            hyper_params['conv_filter_size_' + str((i // 3) + 1)] = x[:, (i // 3) + (i % 3)]
+            hyper_params['conv_filter_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
             filter_sizes.append(x[:, (i // 3) + (i % 3)])
             i += 1
-            hyper_params['conv_num_filters_' + str((i // 3) + 1)] = x[:, (i // 3) + (i % 3)]
+            hyper_params['conv_num_filters_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
             num_filters.append(x[:, (i // 3) + (i % 3)])
             i += 1
-            hyper_params['conv_stride_size_' + str((i // 3) + 1)] = x[:, (i // 3) + (i % 3)]
+            hyper_params['conv_stride_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
             i += 1
             stride_sizes.append(x[:, (i // 3) + (i % 3)])
 
