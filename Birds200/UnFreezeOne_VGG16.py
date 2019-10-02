@@ -30,7 +30,7 @@ except FileNotFoundError:
     log_df = log_df.set_index('index')
 
 # create an instance of the VGG16
-base_model = VGG16(include_top=False)
+base_model = VGG16(include_top=False, input_shape=(224, 224, 3))
 # freeze all layers and count conv_layers
 i = 0
 for i in range(len(base_model.layers)):
@@ -39,8 +39,8 @@ for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
 
-def get_model(model, **kwargs):
-    X = model
+def get_model(model, index, **kwargs):
+    X = model.layers[index].output
     for i in range(len(kwargs) // 3):
         # check dimension and upsample if necessary
         if X.shape[1] < 5:
@@ -51,6 +51,9 @@ def get_model(model, **kwargs):
         filter_size, num_filters, stride_size = map(lambda x: x[1], conv_params)
         X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size), activation='tanh')(X)
 
+    X = layers.Flatten()(X)
+    X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax')(X)
+
     return models.Model(inputs=model.inputs, outputs=X)
 
 # initialise bounds list
@@ -59,9 +62,7 @@ bounds = []
 best_acc = 0 # initialise best accuracy
 # Loop over number of layers
 for iter_ in range(1, len(base_model.layers) + 1):
-    if type(base_model.layers[-iter_]) == layers.Conv2D:
-        temp_model = base_model.layers[-iter_].output
-    else:
+    if type(base_model.layers[-iter_]) != layers.Conv2D:
         continue
 
     bounds.extend(
@@ -98,7 +99,8 @@ for iter_ in range(1, len(base_model.layers) + 1):
             i += 1
             stride_sizes.append(x[:, (i // 3) + (i % 3)])
 
-        to_train_model = get_model(temp_model, **hyper_params)
+        to_train_model = get_model(base_model, -iter_, **hyper_params)
+        to_train_model.compile(optimizer='adam', loss='categorical_crossentropy')
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=20,
