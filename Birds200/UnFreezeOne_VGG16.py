@@ -1,6 +1,7 @@
 import os
 import math
 import numpy as np
+import pandas as pd
 import GPyOpt
 import keras
 from keras.preprocessing import image
