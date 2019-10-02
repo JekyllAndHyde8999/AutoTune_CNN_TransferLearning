@@ -12,7 +12,7 @@ DATA_FOLDER = "/home/deb/Sravan/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
-RESULTS_PATH = os.path.join("AutoFC_ResNet", "AutoFC_ResNet_log_" + DATA_FOLDER + "_bayes_opt_v5.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoConv_VGG16_log_" + DATA_FOLDER + "_bayes_opt_v5.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
