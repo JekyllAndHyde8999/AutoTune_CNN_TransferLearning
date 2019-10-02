@@ -100,7 +100,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
             stride_sizes.append(x[:, (i // 3) + (i % 3)])
 
         to_train_model = get_model(base_model, -iter_, **hyper_params)
-        to_train_model.compile(optimizer='adam', loss='categorical_crossentropy')
+        to_train_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=20,
