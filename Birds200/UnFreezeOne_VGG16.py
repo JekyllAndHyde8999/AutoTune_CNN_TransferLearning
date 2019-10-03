@@ -69,7 +69,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
         [
             {'name': 'conv_filter_size_' + str(iter_), 'type': 'discrete', 'domain': [1, 3]},
             {'name': 'conv_num_filters_' + str(iter_), 'type': 'discrete', 'domain': [32, 64, 128,512]},
-            {'name': 'conv_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1, 2]}
+            {'name': 'conv_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
         ]
     )
 
