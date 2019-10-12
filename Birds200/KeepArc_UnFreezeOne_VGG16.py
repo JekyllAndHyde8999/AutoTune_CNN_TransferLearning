@@ -14,6 +14,7 @@ DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
+EPOCHS = 20
 RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "autoconv_bayes_opt_v5.csv") # The path to the results file
 
 # Creating generators from training and validation data
@@ -23,7 +24,7 @@ train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224)
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
 # creating callbacks for the model
-reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc', factor=np.sqrt(0.01), cooldown=0, patience=5, min_lr=0.5e-10)
+reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc', factor=np.sqrt(0.01), cooldown=0, patience=5, min_lr=0.5e-6)
 
 # adagrad optimizer
 ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
@@ -36,7 +37,7 @@ except FileNotFoundError:
 
 
 # create an instance of the VGG16
-base_model = VGG16(include_top=False, input_shape=(224, 224, 3))
+base_model = VGG16(include_top=False, input_shape=(224, 224, 3), weights='imagenet')
 arc = []
 for layer in base_model.layers:
     if type(layer) == layers.Conv2D:
@@ -51,62 +52,70 @@ print("Freezing the layers")
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
-"""
-def get_model_fake(model, index, **kwargs):
-    X = model.layers[index].output
-    for i in range(len(kwargs) // 3):
-        # check dimension and upsample if necessary
-        if X.shape[1] < 5:
-            print(f"upsampling: {X.shape}")
-            upsampling_factor = math.ceil(5 / X.shape[1])
-            X = layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))(X)
 
-        conv_params = filter(lambda x: x[0].endswith(str(i + 1)), kwargs.items())
-        filter_size, num_filters, stride_size = map(lambda x: x[1], conv_params)
-        print('filter_size', filter_size)
-        print('num_filters', num_filters)
-        print('stride_size', stride_size)
-        X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size), activation='relu', kernel_initializer='he_normal')(X)
+# def get_model_fake(model, index, **kwargs):
+#     X = model.layers[index].output
+#     for i in range(len(kwargs) // 3):
+#         # check dimension and upsample if necessary
+#         if X.shape[1] < 5:
+#             print(f"upsampling: {X.shape}")
+#             upsampling_factor = math.ceil(5 / X.shape[1])
+#             X = layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))(X)
+#
+#         conv_params = filter(lambda x: x[0].endswith(str(i + 1)), kwargs.items())
+#         filter_size, num_filters, stride_size = map(lambda x: x[1], conv_params)
+#         print('filter_size', filter_size)
+#         print('num_filters', num_filters)
+#         print('stride_size', stride_size)
+#         X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size), activation='relu', kernel_initializer='he_normal')(X)
+#
+#     X = layers.Flatten()(X)
+#     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
+#
+#     return models.Model(inputs=model.inputs, outputs=X)
 
-    X = layers.Flatten()(X)
-    X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
+#
+# def get_model_2(model, index, architecture, **kwargs):
+#     X = model.layers[index].output
+#     for i in range(len(kwargs) // 3):
+#         params_dicts = filter(lambda x: x[0].startswith(architecture[index + i + 1]) and x[0].endswith(str((i + 1))), kwargs.items())
+#         filter_size, num_filters, stride_size = map(lambda x: x[1], params_dicts)
+#         # print(f'{architecture[i]} layer: {filter_size}, {num_filters}, {stride_size}')
+#
+#         if architecture[index + i + 1] == 'conv':
+#             X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size))(X)
+#         if architecture[index + i + 1] == 'maxpool':
+#             X = layers.MaxPooling2D(pool_size=filter_size)(X)
+#
+#     X = layers.Flatten()(X)
+#     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
+#
+#     return models.Model(inputs=model.inputs, outputs=X)
 
-    return models.Model(inputs=model.inputs, outputs=X)
-
-
-def get_model_2(model, index, architecture, **kwargs):
-    X = model.layers[index].output
-    for i in range(len(kwargs) // 3):
-        params_dicts = filter(lambda x: x[0].startswith(architecture[index + i + 1]) and x[0].endswith(str((i + 1))), kwargs.items())
-        filter_size, num_filters, stride_size = map(lambda x: x[1], params_dicts)
-        # print(f'{architecture[i]} layer: {filter_size}, {num_filters}, {stride_size}')
-
-        if architecture[index + i + 1] == 'conv':
-            X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size))(X)
-        if architecture[index + i + 1] == 'maxpool':
-            X = layers.MaxPooling2D(pool_size=filter_size)(X)
-
-    X = layers.Flatten()(X)
-    X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
-
-    return models.Model(inputs=model.inputs, outputs=X)
-"""
 
 def get_model(model, index, architecture, **kwargs):
     #X = model.layers[index].output
+    print(kwargs)
     for i in range(len(kwargs) // 3):
-        params_dicts = filter(lambda x: x[0].startswith(architecture[index + i + 1]) and x[0].endswith(str((i + 1))), kwargs.items())
-        filter_size, num_filters, stride_size = map(lambda x: x[1], params_dicts)
-        # print(f'{architecture[i]} layer: {filter_size}, {num_filters}, {stride_size}')
+        global_index = index + i
+        print(f'global_index: {global_index}')
+        print(f'Layer: {architecture[global_index]}')
+        params_dicts = dict(filter(lambda x: x[0].startswith(architecture[global_index]) and x[0].endswith(str(-index)), kwargs.items()))
+        print(f'Params: {params_dicts}')
+        print([x[0] for x in params_dicts.items()])
+        filter_size, num_filters, stride_size = [x[1] for x in params_dicts.items()]
+        print(f'{architecture[global_index]} layer: {filter_size}, {num_filters}, {stride_size}')
 
-        if architecture[index + i + 1] == 'conv':
+        if architecture[global_index] == 'conv':
             #X = layers.Conv2D(filters=num_filters, kernel_size=(filter_size, filter_size), strides=(stride_size, stride_size))(X)
-            model.layers[index + i + 1].filters = num_filters
-            model.layers[index + i + 1].kernel_size = (filter_size, filter_size)
-            model.layers[index + i + 1].strides = (stride_size, stride_size)
-        if architecture[index + i + 1] == 'maxpool':
+            model.layers[global_index].filters = num_filters
+            model.layers[global_index].kernel_size = (filter_size, filter_size)
+            model.layers[global_index].strides = (stride_size, stride_size)
+            model.layers[global_index].trainable = True
+        if architecture[global_index] == 'maxpool':
             #X = layers.MaxPooling2D(pool_size=filter_size)(X)
-            model.layers[index + i + 1].pool_size = filter_size
+            model.layers[global_index].pool_size = filter_size
+            model.layers[global_index].trainable = True
 
     new_model = models.model_from_json(model.to_json())
     X = new_model.layers[-1].output
@@ -124,7 +133,7 @@ to_train_model.compile(optimizer=ADAM, loss='categorical_crossentropy', metrics=
 to_train_model.summary()
 history = to_train_model.fit_generator(
     train_generator,
-    validation_data=valid_generator, epochs=40,
+    validation_data=valid_generator, epochs=EPOCHS,
     steps_per_epoch=len(train_generator) / batch_size,
     validation_steps=len(valid_generator), callbacks=[reduce_LR]
 )
@@ -137,7 +146,9 @@ best_acc = max(best_acc, history.history['val_acc'][-1])
 
 bounds = []
 for iter_ in range(1, len(base_model.layers) + 1):
+    print(-iter_, type(base_model.layers[-iter_]))
     if type(base_model.layers[-iter_]) == layers.Conv2D:
+        print("I am in conv")
         bounds.extend(
             [
                 {'name': 'conv_filter_size_' + str(iter_), 'type': 'discrete', 'domain': [1, 3]},
@@ -147,6 +158,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
         )
 
     if type(base_model.layers[-iter_]) == layers.MaxPooling2D:
+        print("I am in maxpool")
         bounds.extend(
             [
                 {'name': 'maxpool_filter_size_' + str(iter_), 'type': 'discrete', 'domain': [1, 3]},
@@ -171,13 +183,13 @@ for iter_ in range(1, len(base_model.layers) + 1):
         hyper_params = OrderedDict()
         i = 0
         while i < len(bounds):
-            hyper_params[arc[i // 3] + '_filter_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
+            hyper_params[arc[-(i // 3 + 1)] + '_filter_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
             filter_sizes.append(int(x[:, (i // 3) + (i % 3)]))
             i += 1
-            hyper_params[arc[i // 3] + '_num_filters_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
+            hyper_params[arc[-(i // 3 + 1)] + '_num_filters_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
             num_filters.append(int(x[:, (i // 3) + (i % 3)]))
             i += 1
-            hyper_params[arc[i // 3] + '_stride_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
+            hyper_params[arc[-(i // 3 + 1)] + '_stride_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
             stride_sizes.append(int(x[:, (i // 3) + (i % 3)]))
             i += 1
 
@@ -186,7 +198,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
         to_train_model.summary()
         history = to_train_model.fit_generator(
             train_generator,
-            validation_data=valid_generator, epochs=40,
+            validation_data=valid_generator, epochs=EPOCHS,
             steps_per_epoch=len(train_generator) / batch_size,
             validation_steps=len(valid_generator), callbacks=[reduce_LR]
         )
