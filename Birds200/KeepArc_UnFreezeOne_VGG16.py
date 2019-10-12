@@ -51,7 +51,7 @@ print("Freezing the layers")
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
-
+"""
 def get_model_fake(model, index, **kwargs):
     X = model.layers[index].output
     for i in range(len(kwargs) // 3):
@@ -90,7 +90,7 @@ def get_model_2(model, index, architecture, **kwargs):
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 
     return models.Model(inputs=model.inputs, outputs=X)
-
+"""
 
 def get_model(model, index, architecture, **kwargs):
     #X = model.layers[index].output
@@ -194,11 +194,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
         return min(history.history['val_loss']) # return value of the function
 
     opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit, domain=bounds)
-    opt_.run_optimization(max_iter=1) # 20
-
-    if iter_ % 2 == 0:
-        import sys
-        sys.exit(-1)
+    opt_.run_optimization(max_iter=20)
 
     new_acc = history.history['val_acc'][-1]
     if new_acc < best_acc:
