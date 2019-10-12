@@ -49,6 +49,8 @@ for layer in base_model.layers:
         arc.append('maxpool')
     if type(layer) == layers.Dense:
         arc.append('dense')
+    if type(layer) == layers.Flatten:
+        arc.append('flatten')
 
 print(arc)
 base_model.summary()
@@ -105,7 +107,7 @@ def get_model(model, index, architecture, **kwargs):
         global_index = index + i
         print(f'global_index: {global_index}')
         print(f'Layer: {architecture[global_index]}')
-        params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[global_index]) and x[0].endswith(str(-index)), kwargs.items()))
+        params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[global_index]) and x[0].endswith(str(-global_index)), kwargs.items()))
         print(f'Params: {params_dicts}')
         print([x[0] for x in params_dicts.items()])
         filter_size, num_filters, stride_size = [x for x in params_dicts.values()]
@@ -128,7 +130,6 @@ def get_model(model, index, architecture, **kwargs):
 
     new_model = models.model_from_json(model.to_json())
     X = new_model.layers[-1].output
-    #X = layers.Flatten()(X)
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 
     return models.Model(inputs=new_model.inputs, outputs=X)
@@ -148,17 +149,15 @@ history = to_train_model.fit_generator(
 )
 
 best_acc_index = history.history['val_acc'].index(max(history.history['val_acc'])) # get the epoch number for the best validation accuracy
-log_tuple = (0, 'relu', 'he_normal', [], [], [], history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
-log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
-log_df.to_csv(RESULTS_PATH) # save the dataframe in a CSV file
+temp_df = log_df.loc[log_df.num_layers_tuned == 0, :]
+if temp_df.shape[0] <= 0: # if true then log
+    log_tuple = (0, 'relu', 'he_normal', [], [], [], history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+    log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
+    log_df.to_csv(RESULTS_PATH) # save the dataframe in a CSV file
 best_acc = max(best_acc, history.history['val_acc'][-1])
 
 bounds = []
 for iter_ in range(1, len(base_model.layers) + 1):
-    temp_df = log_df.loc[log_df.num_layers_tuned == iter_, :]
-    if temp_df.shape[0] > 0: # if true then skip
-        continue
-
     print(-iter_, type(base_model.layers[-iter_]))
     if type(base_model.layers[-iter_]) == layers.Conv2D:
         print("I am in conv")
@@ -169,8 +168,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
                 {'name': 'conv_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
             ]
         )
-
-    if type(base_model.layers[-iter_]) == layers.MaxPooling2D:
+    elif type(base_model.layers[-iter_]) == layers.MaxPooling2D:
         print("I am in maxpool")
         bounds.extend(
             [
@@ -179,14 +177,22 @@ for iter_ in range(1, len(base_model.layers) + 1):
                 {'name': 'maxpool_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
             ]
         )
-
-    if type(base_model.layers[-iter_]) == layers.Dense:
+    elif type(base_model.layers[-iter_]) == layers.Dense:
         print("I am in dense")
         bounds.extend(
             [
-                {'name': 'dense_num_neurons_' + str(iter_), 'type':'discrete', 'domain': [2 ** j for j in range(6, 11)]},
+                {'name': 'dense_num_neurons_' + str(iter_), 'type':'discrete', 'domain': [2 ** j for j in range(6, 14)]},
                 {'name': 'dense_num_filters_' + str(iter_), 'type': 'discrete', 'domain': [1]},
                 {'name': 'dense_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
+            ]
+        )
+    else:
+        print("I am in flatten")
+        bounds.extend(
+            [
+                {'name': 'flatten_num_neurons_' + str(iter_), 'type':'discrete', 'domain': [1]},
+                {'name': 'flatten_num_filters_' + str(iter_), 'type': 'discrete', 'domain': [1]},
+                {'name': 'flatten_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
             ]
         )
 
@@ -201,21 +207,21 @@ for iter_ in range(1, len(base_model.layers) + 1):
         global num_filters
         global stride_sizes
         global history
-
+        print(x)
         # get params
         hyper_params = OrderedDict()
         i = 0
         while i < len(bounds):
-            hyper_params[arc[-(i // 3 + 1)] + '_filter_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
-            filter_sizes.append(int(x[:, (i // 3) + (i % 3)]))
+            hyper_params[arc[-(i // 3 + 1)] + '_filter_size_' + str((i // 3) + 1)] = int(x[:, i])
+            filter_sizes.append(int(x[:, i]))
             i += 1
-            hyper_params[arc[-(i // 3 + 1)] + '_num_filters_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
+            hyper_params[arc[-(i // 3 + 1)] + '_num_filters_' + str((i // 3) + 1)] = int(x[:, i])
             if arc[-(i // 3 + 1)] == 'conv':
-                num_filters.append(int(x[:, (i // 3) + (i % 3)]))
+                num_filters.append(int(x[:, i]))
             i += 1
-            hyper_params[arc[-(i // 3 + 1)] + '_stride_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
+            hyper_params[arc[-(i // 3 + 1)] + '_stride_size_' + str((i // 3) + 1)] = int(x[:, i])
             if arc[-(i // 3 + 1)] == 'conv':
-                stride_sizes.append(int(x[:, (i // 3) + (i % 3)]))
+                stride_sizes.append(int(x[:, i]))
             i += 1
 
         to_train_model = get_model(base_model, -iter_, arc, **hyper_params)
@@ -230,6 +236,10 @@ for iter_ in range(1, len(base_model.layers) + 1):
 
         return min(history.history['val_loss']) # return value of the function
 
+    temp_df = log_df.loc[log_df.num_layers_tuned == iter_, :]
+    if temp_df.shape[0] > 0: # if true then skip
+        continue
+
     opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit, domain=bounds)
     opt_.run_optimization(max_iter=1)
 
@@ -237,7 +247,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
     if new_acc < best_acc:
         print(f"Validation Accuracy({new_acc}) didn\'t improve.")
         print(f"Breaking out at {iter_} layers.")
-        break
+        # break
     else:
         best_acc = max(best_acc, new_acc)
 
