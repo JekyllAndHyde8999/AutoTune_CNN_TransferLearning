@@ -14,7 +14,7 @@ DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
-EPOCHS = 20
+EPOCHS = 1
 RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "autoconv_bayes_opt_v5.csv") # The path to the results file
 
 # Creating generators from training and validation data
@@ -37,13 +37,16 @@ except FileNotFoundError:
 
 
 # create an instance of the VGG16
-base_model = VGG16(include_top=False, input_shape=(224, 224, 3), weights='imagenet')
+base_model = VGG16(include_top=True, input_shape=(224, 224, 3), weights='imagenet')
+base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 arc = []
 for layer in base_model.layers:
     if type(layer) == layers.Conv2D:
         arc.append('conv')
     if type(layer) == layers.MaxPooling2D:
         arc.append('maxpool')
+    if type(layer) == layers.Dense:
+        arc.append('dense')
 
 print(arc)
 base_model.summary()
@@ -100,10 +103,10 @@ def get_model(model, index, architecture, **kwargs):
         global_index = index + i
         print(f'global_index: {global_index}')
         print(f'Layer: {architecture[global_index]}')
-        params_dicts = dict(filter(lambda x: x[0].startswith(architecture[global_index]) and x[0].endswith(str(-index)), kwargs.items()))
+        params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[global_index]) and x[0].endswith(str(-index)), kwargs.items()))
         print(f'Params: {params_dicts}')
         print([x[0] for x in params_dicts.items()])
-        filter_size, num_filters, stride_size = [x[1] for x in params_dicts.items()]
+        filter_size, num_filters, stride_size = [x for x in params_dicts.values()]
         print(f'{architecture[global_index]} layer: {filter_size}, {num_filters}, {stride_size}')
 
         if architecture[global_index] == 'conv':
@@ -116,10 +119,14 @@ def get_model(model, index, architecture, **kwargs):
             #X = layers.MaxPooling2D(pool_size=filter_size)(X)
             model.layers[global_index].pool_size = filter_size
             model.layers[global_index].trainable = True
+        if architecture[global_index] == 'dense':
+            #X = layers.Dense(filter_size, activation='relu')(X)
+            model.layers[global_index].units = filter_size
+            model.layers[global_index].trainable = True
 
     new_model = models.model_from_json(model.to_json())
     X = new_model.layers[-1].output
-    X = layers.Flatten()(X)
+    #X = layers.Flatten()(X)
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 
     return models.Model(inputs=new_model.inputs, outputs=X)
@@ -161,9 +168,19 @@ for iter_ in range(1, len(base_model.layers) + 1):
         print("I am in maxpool")
         bounds.extend(
             [
-                {'name': 'maxpool_filter_size_' + str(iter_), 'type': 'discrete', 'domain': [1, 3]},
+                {'name': 'maxpool_filter_size_' + str(iter_), 'type': 'discrete', 'domain': [2, 3]},
                 {'name': 'maxpool_num_filters_' + str(iter_), 'type': 'discrete', 'domain': [1]},
                 {'name': 'maxpool_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
+            ]
+        )
+
+    if type(base_model.layers[-iter_]) == layers.Dense:
+        print("I am in dense")
+        bounds.extend(
+            [
+                {'name': 'dense_num_neurons_' + str(iter_), 'type':'discrete', 'domain': [2 ** j for j in range(6, 11)]},
+                {'name': 'dense_num_filters_' + str(iter_), 'type': 'discrete', 'domain': [1]},
+                {'name': 'dense_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
             ]
         )
 
@@ -187,10 +204,12 @@ for iter_ in range(1, len(base_model.layers) + 1):
             filter_sizes.append(int(x[:, (i // 3) + (i % 3)]))
             i += 1
             hyper_params[arc[-(i // 3 + 1)] + '_num_filters_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
-            num_filters.append(int(x[:, (i // 3) + (i % 3)]))
+            if arc[-(i // 3 + 1)] == 'conv':
+                num_filters.append(int(x[:, (i // 3) + (i % 3)]))
             i += 1
             hyper_params[arc[-(i // 3 + 1)] + '_stride_size_' + str((i // 3) + 1)] = int(x[:, (i // 3) + (i % 3)])
-            stride_sizes.append(int(x[:, (i // 3) + (i % 3)]))
+            if arc[-(i // 3 + 1)] == 'conv':
+                stride_sizes.append(int(x[:, (i // 3) + (i % 3)]))
             i += 1
 
         to_train_model = get_model(base_model, -iter_, arc, **hyper_params)
@@ -206,7 +225,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
         return min(history.history['val_loss']) # return value of the function
 
     opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit, domain=bounds)
-    opt_.run_optimization(max_iter=20)
+    opt_.run_optimization(max_iter=5)
 
     new_acc = history.history['val_acc'][-1]
     if new_acc < best_acc:
