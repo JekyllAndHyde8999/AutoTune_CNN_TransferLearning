@@ -9,13 +9,15 @@ from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks
 from keras.applications import VGG16
 
+reverse_list = lambda l: list(reversed(l))
+
 DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 # DATA_FOLDER = "CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "autoconv_bayes_opt_v5.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v5.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -153,6 +155,10 @@ best_acc = max(best_acc, history.history['val_acc'][-1])
 
 bounds = []
 for iter_ in range(1, len(base_model.layers) + 1):
+    temp_df = log_df.loc[log_df.num_layers_tuned == iter_, :]
+    if temp_df.shape[0] > 0: # if true then skip
+        continue
+
     print(-iter_, type(base_model.layers[-iter_]))
     if type(base_model.layers[-iter_]) == layers.Conv2D:
         print("I am in conv")
@@ -225,7 +231,7 @@ for iter_ in range(1, len(base_model.layers) + 1):
         return min(history.history['val_loss']) # return value of the function
 
     opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit, domain=bounds)
-    opt_.run_optimization(max_iter=5)
+    opt_.run_optimization(max_iter=1)
 
     new_acc = history.history['val_acc'][-1]
     if new_acc < best_acc:
@@ -241,6 +247,6 @@ for iter_ in range(1, len(base_model.layers) + 1):
     print(f"Optimized Function value: {opt_.fx_opt}")
 
     best_acc_index = history.history['val_acc'].index(max(history.history['val_acc'])) # get the epoch number for the best validation accuracy
-    log_tuple = (iter_, 'relu', 'he_normal', filter_sizes, num_filters, stride_sizes, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+    log_tuple = (iter_, 'relu', 'he_normal', reverse_list(filter_sizes), reverse_list(num_filters), reverse_list(stride_sizes), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
     log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
     log_df.to_csv(RESULTS_PATH) # save the dataframe in a CSV file
