@@ -107,7 +107,7 @@ def get_model(model, index, architecture, **kwargs):
         global_index = index + i
         print(f'global_index: {global_index}')
         print(f'Layer: {architecture[global_index]}')
-        params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[global_index]) and x[0].endswith(str(-global_index)), kwargs.items()))
+        params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[global_index]) and x[0].split('_')[-1] == str(-global_index), kwargs.items()))
         print(f'Params: {params_dicts}')
         print([x[0] for x in params_dicts.items()])
         filter_size, num_filters, stride_size = [x for x in params_dicts.values()]
@@ -137,24 +137,24 @@ def get_model(model, index, architecture, **kwargs):
 
 best_acc = 0 # initialize best accuracy
 
-# do for original model
-to_train_model = get_model(base_model, -1, arc)
-to_train_model.compile(optimizer=ADAM, loss='categorical_crossentropy', metrics=['accuracy'])
-to_train_model.summary()
-history = to_train_model.fit_generator(
-    train_generator,
-    validation_data=valid_generator, epochs=EPOCHS,
-    steps_per_epoch=len(train_generator) / batch_size,
-    validation_steps=len(valid_generator), callbacks=[reduce_LR]
-)
-
-best_acc_index = history.history['val_acc'].index(max(history.history['val_acc'])) # get the epoch number for the best validation accuracy
 temp_df = log_df.loc[log_df.num_layers_tuned == 0, :]
 if temp_df.shape[0] <= 0: # if true then log
+    # do for original model
+    to_train_model = get_model(base_model, -1, arc)
+    to_train_model.compile(optimizer=ADAM, loss='categorical_crossentropy', metrics=['accuracy'])
+    to_train_model.summary()
+    history = to_train_model.fit_generator(
+        train_generator,
+        validation_data=valid_generator, epochs=EPOCHS,
+        steps_per_epoch=len(train_generator) / batch_size,
+        validation_steps=len(valid_generator), callbacks=[reduce_LR]
+    )
+
+    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc'])) # get the epoch number for the best validation accuracy
     log_tuple = (0, 'relu', 'he_normal', [], [], [], history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
     log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
     log_df.to_csv(RESULTS_PATH) # save the dataframe in a CSV file
-best_acc = max(best_acc, history.history['val_acc'][-1])
+    best_acc = max(best_acc, history.history['val_acc'][-1])
 
 bounds = []
 for iter_ in range(1, len(base_model.layers) + 1):
@@ -181,12 +181,12 @@ for iter_ in range(1, len(base_model.layers) + 1):
         print("I am in dense")
         bounds.extend(
             [
-                {'name': 'dense_num_neurons_' + str(iter_), 'type':'discrete', 'domain': [2 ** j for j in range(6, 14)]},
+                {'name': 'dense_num_neurons_' + str(iter_), 'type': 'discrete', 'domain': [2 ** j for j in range(6, 13)]},
                 {'name': 'dense_num_filters_' + str(iter_), 'type': 'discrete', 'domain': [1]},
                 {'name': 'dense_stride_size_' + str(iter_), 'type': 'discrete', 'domain': [1]}
             ]
         )
-    else:
+    elif type(base_model.layers[-iter_]) == layers.Flatten:
         print("I am in flatten")
         bounds.extend(
             [
@@ -203,9 +203,9 @@ for iter_ in range(1, len(base_model.layers) + 1):
 
 
     def model_fit(x):
-        global filter_sizes
-        global num_filters
-        global stride_sizes
+        # global filter_sizes
+        # global num_filters
+        # global stride_sizes
         global history
         print(x)
         # get params
@@ -213,15 +213,15 @@ for iter_ in range(1, len(base_model.layers) + 1):
         i = 0
         while i < len(bounds):
             hyper_params[arc[-(i // 3 + 1)] + '_filter_size_' + str((i // 3) + 1)] = int(x[:, i])
-            filter_sizes.append(int(x[:, i]))
+            # filter_sizes.append(int(x[:, i]))
             i += 1
             hyper_params[arc[-(i // 3 + 1)] + '_num_filters_' + str((i // 3) + 1)] = int(x[:, i])
-            if arc[-(i // 3 + 1)] == 'conv':
-                num_filters.append(int(x[:, i]))
+            # if arc[-(i // 3 + 1)] == 'conv':
+            #     num_filters.append(int(x[:, i]))
             i += 1
             hyper_params[arc[-(i // 3 + 1)] + '_stride_size_' + str((i // 3) + 1)] = int(x[:, i])
-            if arc[-(i // 3 + 1)] == 'conv':
-                stride_sizes.append(int(x[:, i]))
+            # if arc[-(i // 3 + 1)] == 'conv':
+            #     stride_sizes.append(int(x[:, i]))
             i += 1
 
         to_train_model = get_model(base_model, -iter_, arc, **hyper_params)
@@ -243,20 +243,31 @@ for iter_ in range(1, len(base_model.layers) + 1):
     opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit, domain=bounds)
     opt_.run_optimization(max_iter=1)
 
-    new_acc = history.history['val_acc'][-1]
+    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc'])) # get the epoch number for the best validation accuracy
+    new_acc = history.history['val_acc'][best_acc_index]
     if new_acc < best_acc:
         print(f"Validation Accuracy({new_acc}) didn\'t improve.")
         print(f"Breaking out at {iter_} layers.")
-        # break
+        break
     else:
         best_acc = max(best_acc, new_acc)
 
     print("Optimized Parameters:")
     for i in range(len(bounds)):
         print(f"\t{bounds[i]['name']}: {opt_.x_opt[i]}")
+        if bounds[i]['name'].startswith('conv'):
+            if 'filter_size' in bounds[i]['name']:
+                filter_sizes.append(opt_.x_opt[i])
+            if 'num_filters' in bounds[i]['name']:
+                num_filters.append(opt_.x_opt[i])
+            if 'stride_size' in bounds[i]['name']:
+                stride_sizes.append(opt_.x_opt[i])
+        else:
+            if 'filter_size' in bounds[i]['name']:
+                filter_sizes.append(opt_.x_opt[i])
     print(f"Optimized Function value: {opt_.fx_opt}")
 
-    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc'])) # get the epoch number for the best validation accuracy
+
     log_tuple = (iter_, 'relu', 'he_normal', reverse_list(filter_sizes), reverse_list(num_filters), reverse_list(stride_sizes), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
     log_df.loc[log_df.shape[0]] = log_tuple # add the record to the dataframe
     log_df.to_csv(RESULTS_PATH) # save the dataframe in a CSV file
