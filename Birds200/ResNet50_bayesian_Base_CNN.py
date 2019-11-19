@@ -119,7 +119,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
 
-    X = layers.Flatten()(X)
+    # X = layers.Flatten()(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
