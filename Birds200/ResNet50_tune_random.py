@@ -30,7 +30,7 @@ RESULTS_PATH = os.path.join("AutoConv_ResNet50", "AutoFCL_AutoConv_ResNet50_log_
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
-datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.vgg16.preprocess_input) # creating an instance of the data generator
+datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.resnet50.preprocess_input) # creating an instance of the data generator
 train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for training data
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
