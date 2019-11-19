@@ -86,6 +86,22 @@ except FileNotFoundError:
 #     return models.Model(inputs=model.inputs, outputs=X)
 
 
+def get_model_dense(model, dense_params):
+    X = model.layers[-1].output
+    X = layers.Flatten()(X)
+
+    for j in range(len(dense_params) // 2):
+        params_dicts = OrderedDict(filter(lambda x: x[0].split('_')[-1] == str(j + 1), dense_params.items()))
+        print(params_dicts)
+        units, dropout = params_dicts.values()
+        X = layers.Dense(int(units), activation='relu', kernel_initializer='he_normal')(X)
+        X = layers.BatchNormalization()(X)
+        X = layers.Dropout(float(dropout))(X)
+
+    X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
+    return models.Model(inputs=model.inputs, outputs=X)
+
+
 def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim_dropouts, acts):
     assert optim_neurons and optim_dropouts, "No optimum architecture for dense layers is provided."
     X = model.layers[index - 1].output
