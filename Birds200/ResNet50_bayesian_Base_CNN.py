@@ -159,7 +159,8 @@ log_df.loc[log_df.shape[0]] = log_tuple
 log_df.to_csv(RESULTS_PATH)
 
 # tuning the model
-base_model = ResNet50(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+base_model = ResNet50(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
+base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].outputs)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 base_model.summary()
