@@ -111,7 +111,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
         elif architecture[i] == 'avgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
-            X = layers.GlobalAveragePooling2D(pool_size=int(filter_size))(X)
+            X = layers.GlobalAveragePooling2D()(X)
         elif architecture[i] == 'batch':
             assert type(model.layers[global_index]) == layers.BatchNormalization
             X = layers.BatchNormalization()(X)
