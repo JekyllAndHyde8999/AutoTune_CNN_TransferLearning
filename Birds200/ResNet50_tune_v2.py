@@ -14,7 +14,7 @@ from itertools import product
 from collections import OrderedDict
 from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks, initializers
-from keras.applications import VGG16
+from keras.applications import ResNet50
 
 reverse_list = lambda l: list(reversed(l))
 
@@ -24,7 +24,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoFCL_AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_ResNet50", "AutoFCL_AutoConv_ResNet50_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -131,7 +131,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 
 
 # training the original model
-base_model = VGG16(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
+base_model = ResNet50(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
 X = base_model.layers[-2].output
 X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax')(X)
 base_model = models.Model(inputs=base_model.inputs, outputs=X)
@@ -159,13 +159,104 @@ log_df.loc[log_df.shape[0]] = log_tuple
 log_df.to_csv(RESULTS_PATH)
 
 # tuning the model
-base_model = VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+base_model = ResNet50(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 base_model.summary()
 
+## optimize dense layers
+best_acc = 0
+fc_layer_range = range(1, 3)
+dense_opt_s = []
+for num_dense in fc_layer_range:
+    temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
+    print(f"num_dense: {num_dense}")
+    time.sleep(3)
+
+    bounds = []
+    for j in range(num_dense):
+        bounds.append({'name': 'units_' + str(j + 1), 'type': 'discrete', 'domain': [2 ** k for k in range(6, 11)]})
+        bounds.append({'name': 'dropout_' + str(j + 1), 'type': 'discrete', 'domain': np.arange(start=0, stop=1, step=0.1)})
+
+    history = None
+    def model_fit_dense(x):
+        global history
+
+        num_neurons = []
+        dropouts = []
+
+        print(x)
+        dense_params = OrderedDict()
+
+        j = 0
+        while j < x.shape[1]:
+            dense_params['units_' + str((j // 2) + 1)] = x[:, j]
+            num_neurons.append(int(x[:, j]))
+            j += 1
+            dense_params['dropout_' + str((j // 2) + 1)] = x[:, j]
+            dropouts.append(float(x[:, j]))
+            j += 1
+
+        to_train_model = get_model_dense(temp_model, dense_params)
+        to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
+        to_train_model.summary()
+        history = to_train_model.fit_generator(
+            train_generator,
+            validation_data=valid_generator, epochs=EPOCHS,
+            steps_per_epoch=len(train_generator) / batch_size,
+            validation_steps=len(valid_generator), callbacks=[reduce_LR]
+        )
+
+        best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
+        assert history.history['val_acc'][best_acc_index] == max(history.history['val_acc'])
+        train_loss = history.history['loss'][best_acc_index]
+        train_acc = history.history['acc'][best_acc_index]
+        val_loss = history.history['val_loss'][best_acc_index]
+        val_acc = history.history['val_acc'][best_acc_index]
+
+        log_tuple = ('relu', 'he_normal', 0, num_dense + 1, num_neurons, dropouts, [], [], [], train_loss, train_acc, val_loss, val_acc)
+        # try:
+        #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
+        #     log_df.loc[row_index] = log_tuple
+        # except:
+        log_df.loc[log_df.shape[0]] = log_tuple
+        log_df.to_csv(RESULTS_PATH)
+
+        return min(history.history['val_loss'])
+
+
+    opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit_dense, domain=bounds)
+    opt_.run_optimization(max_iter=20)
+    dense_opt_s.append(opt_)
+
+    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
+    assert history.history['val_acc'][best_acc_index] == max(history.history['val_acc'])
+    temp_acc = history.history['val_acc'][best_acc_index]
+
+    # if temp_acc < best_acc:
+    #     print("Validation Accuracy did not improve")
+    #     print(f"Breaking out at {num_dense} layers")
+    #     break
+    best_acc = max(temp_acc, best_acc)
+
+    print("Optimized Parameters:")
+    for k in range(len(bounds)):
+        print(f"\t{bounds[k]['name']}: {opt_.x_opt[k]}")
+    print(f"Optimized Function value: {opt_.fx_opt}")
+
+    print(f"Finshed iteration with num_dense: {num_dense}")
+    time.sleep(3)
+
 optim_neurons = []
 optim_dropouts = []
+req_opt_ = min(dense_opt_s, key=lambda x: x.fx_opt)
+k = 0
+while k < len(bounds):
+    optim_neurons.append(int(req_opt_.x_opt[k]))
+    k += 1
+    optim_dropouts.append(float(req_opt_.x_opt[k]))
+    k += 1
+
 
 best_acc = 0
 ## optimize conv layers
