@@ -160,7 +160,7 @@ log_df.to_csv(RESULTS_PATH)
 
 # tuning the model
 base_model = ResNet50(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
-base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].outputs)
+base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 base_model.summary()
@@ -180,7 +180,7 @@ meaningless = [
 
 for i in range(1, len(base_model.layers) + 1):
     unfreeze = i
-    if type(model.layers[-i]) in meaningless:
+    if type(base_model.layers[-i]) in meaningless:
         continue
     temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
     print(f"Tuning last {unfreeze} layers.")
