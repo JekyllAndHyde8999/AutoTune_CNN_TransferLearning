@@ -14,7 +14,7 @@ from itertools import product
 from collections import OrderedDict
 from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks, initializers
-from keras.applications import VGG16
+from keras.applications import ResNet50
 
 reverse_list = lambda l: list(reversed(l))
 
@@ -24,11 +24,11 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoFCL_AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_ResNet50", "AutoFCL_AutoConv_ResNet50_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
-datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.vgg16.preprocess_input) # creating an instance of the data generator
+datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.resnet50.preprocess_input) # creating an instance of the data generator
 train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for training data
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
@@ -131,7 +131,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 
 
 # training the original model
-base_model = VGG16(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
+base_model = ResNet50(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
 X = base_model.layers[-2].output
 X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax')(X)
 base_model = models.Model(inputs=base_model.inputs, outputs=X)
@@ -159,7 +159,7 @@ log_df.loc[log_df.shape[0]] = log_tuple
 log_df.to_csv(RESULTS_PATH)
 
 # tuning the model
-base_model = VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+base_model = ResNet50(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 base_model.summary()
