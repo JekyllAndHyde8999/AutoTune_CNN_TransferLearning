@@ -61,7 +61,7 @@ def get_model_dense(model, dense_params):
     return models.Model(inputs=model.inputs, outputs=X)
 
 
-def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_sizes, acts, optim_neurons, optim_dropouts):
+def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_sizes, acts, zero_pads, optim_neurons, optim_dropouts):
     # assert optim_neurons and optim_dropouts, "No optimum architecture for dense layers is provided."
     X = model.layers[index - 1].output
     print(type(model.layers[index - 1]))
@@ -155,6 +155,7 @@ optim_neurons, optim_dropouts = [], []
 filter_size_space = [1, 3]
 num_filter_space = [32, 64, 128, 256]
 pool_size_space = [2, 3]
+pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
     temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
     print(f"Tuning last {unfreeze} layers.")
@@ -164,6 +165,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
     curr_num_filters = []
     curr_pool_size = []
     curr_acts = []
+    curr_pad = []
     temp_arc = []
     for j in range(1, unfreeze + 1):
         if type(temp_model.layers[-j]) == layers.Conv2D:
@@ -185,7 +187,25 @@ for unfreeze in range(1, len(base_model.layers) + 1):
             temp_arc.append('batch')
         elif type(model.layers[-j]) == layers.ZeroPadding2D:
             temp_arc.append('zeropad')
+            curr_pad.append(random.sample(pad_size_space, 1)[0])
 
     print(f"temp_arc: {temp_arc}")
 
-    to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), optim_neurons, optim_dropouts)
+    to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
+    to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
+    to_train_model.summary()
+    history = to_train_model.fit_generator(
+        train_generator,
+        validation_data=valid_generator, epochs=EPOCHS,
+        steps_per_epoch=len(train_generator) / batch_size,
+        validation_steps=len(valid_generator), callbacks=[reduce_LR]
+    )
+
+    best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
+    temp_acc = history.history['val_acc'][best_acc_index]
+
+    log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+    log_df.loc[log_df.shape[0], :] = log_tuple
+    log_df.to_csv(RESULTS_PATH)
+
+    best_acc = max(best_acc, temp_acc)
