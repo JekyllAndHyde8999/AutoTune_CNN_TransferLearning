@@ -47,44 +47,20 @@ except FileNotFoundError:
     log_df = log_df.set_index('index')
 
 
-# def get_model(model, index, architecture, conv_params, dense_params):
-#     # divide hyperparams into 2 parts
-#     # conv_params = {key: val for key, val in hyperparams.items() if 'filter_size' in key or 'num_filter' in key or 'stride_size' in key}
-#     # dense_params = {key: val for key, val in hyperparams.items() if key not in conv_params.keys()}
-#
-#     X = model.layers[index - 1].output
-#     print(type(model.layers[index - 1]))
-#
-#     for i in range(len(conv_params) // 3):
-#         global_index = index + i
-#         print(f"global_index: {global_index}")
-#         print(f"Layer: {architecture[i]}")
-#         params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[i]) and x[0].split('_')[-1] == str(-global_index), conv_params.items()))
-#         print(f'Params: {params_dicts}')
-#         print([x[0] for x in params_dicts.items()])
-#         filter_size, num_filters, stride_size = [x for x in params_dicts.values()]
-#         print(f'{architecture[i]} layer: {filter_size}, {num_filters}, {stride_size}')
-#
-#         if architecture[i] == 'conv':
-#             assert type(model.layers[global_index]) == layers.Conv2D
-#             X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), strides=(int(stride_size), int(stride_size)), kernel_initializer='he_normal', activation='relu')(X)
-#         elif architecture[i] == 'maxpool':
-#             assert type(model.layers[global_index]) == layers.MaxPooling2D
-#             X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
-#
-#     X = layers.Flatten()(X)
-#
-#     print(f"dense_params: {dense_params}")
-#     for j in range(len(dense_params) // 2):
-#         params_dicts = OrderedDict(filter(lambda x: x[0].split('_')[-1] == str(j + 1), dense_params.items()))
-#         print(params_dicts)
-#         units, dropout = params_dicts.values()
-#         X = layers.Dense(int(units), activation='relu', kernel_initializer='he_normal')(X)
-#         X = layers.BatchNormalization()(X)
-#         X = layers.Dropout(float(dropout))(X)
-#
-#     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
-#     return models.Model(inputs=model.inputs, outputs=X)
+def get_model_dense(model, dense_params):
+    X = model.layers[-1].output
+    X = layers.Flatten()(X)
+
+    for j in range(len(dense_params) // 2):
+        params_dicts = OrderedDict(filter(lambda x: x[0].split('_')[-1] == str(j + 1), dense_params.items()))
+        print(params_dicts)
+        units, dropout = params_dicts.values()
+        X = layers.Dense(int(units), activation='relu', kernel_initializer='he_normal')(X)
+        X = layers.BatchNormalization()(X)
+        X = layers.Dropout(float(dropout))(X)
+
+    X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
+    return models.Model(inputs=model.inputs, outputs=X)
 
 
 def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim_dropouts, acts):
@@ -180,8 +156,98 @@ for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 base_model.summary()
 
+## optimize dense layers
+best_acc = 0
+fc_layer_range = range(1, 3)
+dense_opt_s = []
+for num_dense in fc_layer_range:
+    temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
+    print(f"num_dense: {num_dense}")
+    time.sleep(3)
+
+    bounds = []
+    for j in range(num_dense):
+        bounds.append({'name': 'units_' + str(j + 1), 'type': 'discrete', 'domain': [2 ** k for k in range(6, 11)]})
+        bounds.append({'name': 'dropout_' + str(j + 1), 'type': 'discrete', 'domain': np.arange(start=0, stop=1, step=0.1)})
+
+    history = None
+    def model_fit_dense(x):
+        global history
+
+        num_neurons = []
+        dropouts = []
+
+        print(x)
+        dense_params = OrderedDict()
+
+        j = 0
+        while j < x.shape[1]:
+            dense_params['units_' + str((j // 2) + 1)] = x[:, j]
+            num_neurons.append(int(x[:, j]))
+            j += 1
+            dense_params['dropout_' + str((j // 2) + 1)] = x[:, j]
+            dropouts.append(float(x[:, j]))
+            j += 1
+
+        to_train_model = get_model_dense(temp_model, dense_params)
+        to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
+        to_train_model.summary()
+        history = to_train_model.fit_generator(
+            train_generator,
+            validation_data=valid_generator, epochs=EPOCHS,
+            steps_per_epoch=len(train_generator) / batch_size,
+            validation_steps=len(valid_generator), callbacks=[reduce_LR]
+        )
+
+        best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
+        assert history.history['val_acc'][best_acc_index] == max(history.history['val_acc'])
+        train_loss = history.history['loss'][best_acc_index]
+        train_acc = history.history['acc'][best_acc_index]
+        val_loss = history.history['val_loss'][best_acc_index]
+        val_acc = history.history['val_acc'][best_acc_index]
+
+        log_tuple = ('relu', 'he_normal', 0, num_dense + 1, num_neurons, dropouts, [], [], [], train_loss, train_acc, val_loss, val_acc)
+        # try:
+        #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
+        #     log_df.loc[row_index] = log_tuple
+        # except:
+        log_df.loc[log_df.shape[0]] = log_tuple
+        log_df.to_csv(RESULTS_PATH)
+
+        return min(history.history['val_loss'])
+
+
+    opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit_dense, domain=bounds)
+    opt_.run_optimization(max_iter=20)
+    dense_opt_s.append(opt_)
+
+    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
+    assert history.history['val_acc'][best_acc_index] == max(history.history['val_acc'])
+    temp_acc = history.history['val_acc'][best_acc_index]
+
+    # if temp_acc < best_acc:
+    #     print("Validation Accuracy did not improve")
+    #     print(f"Breaking out at {num_dense} layers")
+    #     break
+    best_acc = max(temp_acc, best_acc)
+
+    print("Optimized Parameters:")
+    for k in range(len(bounds)):
+        print(f"\t{bounds[k]['name']}: {opt_.x_opt[k]}")
+    print(f"Optimized Function value: {opt_.fx_opt}")
+
+    print(f"Finshed iteration with num_dense: {num_dense}")
+    time.sleep(3)
+
 optim_neurons = []
 optim_dropouts = []
+req_opt_ = min(dense_opt_s, key=lambda x: x.fx_opt)
+k = 0
+while k < len(bounds):
+    optim_neurons.append(int(req_opt_.x_opt[k]))
+    k += 1
+    optim_dropouts.append(float(req_opt_.x_opt[k]))
+    k += 1
 
 best_acc = 0
 meaningless = [
