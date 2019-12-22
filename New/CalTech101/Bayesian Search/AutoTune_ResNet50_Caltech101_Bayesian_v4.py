@@ -49,7 +49,7 @@ except FileNotFoundError:
 
 def get_model_dense(model, dense_params):
     X = model.layers[-1].output
-    X = layers.Flatten()(X)
+    # X = layers.Flatten()(X)
 
     for j in range(len(dense_params) // 2):
         params_dicts = OrderedDict(filter(lambda x: x[0].split('_')[-1] == str(j + 1), dense_params.items()))
