@@ -234,10 +234,19 @@ while k < len(bounds):
     k += 1
 
 best_acc = 0
+meaningless = [
+    layers.Activation,
+    # layers.GlobalAveragePooling2D,
+    # layers.MaxPooling2D,
+    layers.ZeroPadding2D,
+    layers.Add,
+]
 ## optimize conv layers
 
 for i in range(1, len(base_model.layers) + 1):
     unfreeze = i
+    if type(base_model.layers[-i]) in meaningless:
+        continue
     temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
     print(f"Tuning last {unfreeze} layers.")
     time.sleep(3)
