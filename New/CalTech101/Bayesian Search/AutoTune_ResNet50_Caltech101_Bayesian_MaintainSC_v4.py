@@ -243,7 +243,7 @@ optim_neurons = []
 optim_dropouts = []
 req_opt_ = min(dense_opt_s, key=lambda x: x.fx_opt)
 k = 0
-while k < len(bounds):
+while k < len(req_opt_.x_opt):
     optim_neurons.append(int(req_opt_.x_opt[k]))
     k += 1
     optim_dropouts.append(float(req_opt_.x_opt[k]))
