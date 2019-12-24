@@ -42,7 +42,8 @@ ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
 except FileNotFoundError:
-    log_df = pd.DataFrame(columns=['index', 'activation', 'weight_initializer', 'num_layers_tuned', 'num_fc_layers', 'num_neurons', 'dropouts', 'filter_sizes', 'num_filters', 'stride_sizes', 'train_loss', 'train_acc', 'val_loss', 'val_acc'])
+    log_df = pd.DataFrame(columns=['index', 'activation', 'weight_initializer', 'num_layers_tuned', 'num_fc_layers', 'num_neurons', '
+                                   s', 'filter_sizes', 'num_filters', 'stride_sizes', 'train_loss', 'train_acc', 'val_loss', 'val_acc'])
     log_df = log_df.set_index('index')
 
 
@@ -100,7 +101,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=model.inputs, outputs=X)
