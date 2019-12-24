@@ -70,7 +70,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 
     for i in range(len(conv_params) // 3):
         global_index = index + i
-        if architecture[i] == 'add':
+        if architecture[i] in ('add', 'concat'):
             continue
         print(f"global_index: {global_index}")
         print(f"Layer: {architecture[i]}")
@@ -271,6 +271,8 @@ for i in range(1, len(base_model.layers) + 1):
         elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
             temp_acts.append(temp_model.layers[-j].activation)
+        elif type(temp_model.layers[-j]) == layers.Concatenate:
+            temp_arc.append('concat')
 
     print(f"temp_arc: {temp_arc}")
 
