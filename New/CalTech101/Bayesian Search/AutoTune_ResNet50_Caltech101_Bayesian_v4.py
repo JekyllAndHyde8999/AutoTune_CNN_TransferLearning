@@ -240,6 +240,7 @@ meaningless = [
     layers.Activation,
     # layers.GlobalAveragePooling2D,
     # layers.MaxPooling2D,
+    layers.BatchNormalization,
     layers.ZeroPadding2D,
     layers.Add,
 ]
