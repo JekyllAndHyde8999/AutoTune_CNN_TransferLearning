@@ -106,7 +106,8 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
 
 
 base_model = ResNet50(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
-
+for i in range(len(base_model.layers)):
+    base_model.layers[i].trainable = False
 
 ## training original model
 X = base_model.layers[-2].output
@@ -120,8 +121,6 @@ history = to_train_model.fit_generator(
     steps_per_epoch=len(train_generator) / batch_size,
     validation_steps=len(valid_generator), callbacks=[reduce_LR]
 )
-for i in range(len(base_model.layers) - 1):
-    base_model.layers[i].trainable = False
 
 base_model = ResNet50(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
 base_model = model.Model(inputs=base_model.inputs, outputs=base_model.layers[-2])
