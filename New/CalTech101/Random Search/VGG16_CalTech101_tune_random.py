@@ -123,6 +123,8 @@ history = to_train_model.fit_generator(
 )
 
 base_model = VGG16(input_shape=(224, 224, 3), weights='imagenet', include_top=False)
+for i in range(len(base_model.layers)):
+    base_model.layers[i].trainable = False
 
 ## optimize dense layers
 fc_layer_range = range(1, 3)

@@ -123,7 +123,9 @@ history = to_train_model.fit_generator(
 )
 
 base_model = DenseNet121(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
-base_model = model.Model(inputs=base_model.inputs, outputs=base_model.layers[-2])
+base_model = model.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
+for i in range(len(base_model.layers)):
+    base_model.layers[i].trainable = False
 
 ## optimize dense layers
 fc_layer_range = range(1, 3)
