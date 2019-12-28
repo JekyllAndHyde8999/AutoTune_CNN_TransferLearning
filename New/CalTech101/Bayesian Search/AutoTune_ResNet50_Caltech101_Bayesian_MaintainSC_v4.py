@@ -111,7 +111,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             # X = layers.Activation(acts.pop(0))(X)
 
     # X = layers.Flatten()(X)
-    new_model = models.model_from_json(model.to_json)
+    new_model = models.model_from_json(model.to_json())
     X = new_model.layers[-1].outputs
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
