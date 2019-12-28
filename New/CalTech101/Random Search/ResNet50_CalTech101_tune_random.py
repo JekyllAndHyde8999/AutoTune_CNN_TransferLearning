@@ -78,7 +78,7 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             assert type(model.layers[global_index]) == layers.Conv2D
             num_filter = num_filters.pop(0)
             filter_size = filter_sizes.pop(0)
-            X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation='relu')(X)
+            X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation='relu')(X)
         elif architecture[i] == 'maxpool':
             assert type(model.layers[global_index]) == layers.MaxPooling2D
             pool_size = pool_sizes.pop(0)
