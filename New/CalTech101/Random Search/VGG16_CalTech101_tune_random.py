@@ -156,11 +156,20 @@ for num_dense in fc_layer_range:
 
 optim_neurons, optim_dropouts = best_dense_params
 # optim_neurons, optim_dropouts = [], []
+meaningless = [
+    layers.Activation,
+    # layers.GlobalAveragePooling2D,
+    # layers.MaxPooling2D,
+    layers.ZeroPadding2D,
+    layers.Add,
+]
 ## optimize conv layers
 filter_size_space = [1, 3]
 num_filter_space = [32, 64, 128, 256]
 pool_size_space = [2, 3]
 for unfreeze in range(1, len(base_model.layers) + 1):
+    if type(model.layers[-unfreeze]) in meaningless:
+        continue
     temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
     print(f"Tuning last {unfreeze} layers.")
     time.sleep(3)

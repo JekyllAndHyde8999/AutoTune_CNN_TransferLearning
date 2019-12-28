@@ -123,40 +123,49 @@ history = to_train_model.fit_generator(
 
 
 ## optimize dense layers
-# fc_layer_range = range(1, 3)
-# units_space = [2 ** j for j in range(6, 13)]
-# dropouts_space = [0.1 * j for j in range(10)]
-# best_acc = 0
-# best_dense_params = None
-#
-# for num_dense in fc_layer_range:
-#     curr_units = random.sample(units_space, num_dense)
-#     curr_dropouts = random.sample(dropouts_space, num_dense)
-#
-#     to_train_model = get_model_dense(base_model, [curr_units, curr_dropouts])
-#     to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-#     to_train_model.summary()
-#     history = to_train_model.fit_generator(
-#         train_generator,
-#         validation_data=valid_generator, epochs=EPOCHS,
-#         steps_per_epoch=len(train_generator) / batch_size,
-#         validation_steps=len(valid_generator), callbacks=[reduce_LR]
-#     )
-#
-#     best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
-#     temp_acc = history.history['val_acc'][best_acc_index]
-#     if temp_acc > best_acc:
-#         best_dense_params = [curr_units, curr_dropouts]
-#     best_acc = max(temp_acc, best_acc)
-#
-# optim_neurons, optim_dropouts = best_dense_params
-optim_neurons, optim_dropouts = [], []
+fc_layer_range = range(1, 3)
+units_space = [2 ** j for j in range(6, 13)]
+dropouts_space = [0.1 * j for j in range(10)]
+best_acc = 0
+best_dense_params = None
+
+for num_dense in fc_layer_range:
+    curr_units = random.sample(units_space, num_dense)
+    curr_dropouts = random.sample(dropouts_space, num_dense)
+
+    to_train_model = get_model_dense(base_model, [curr_units, curr_dropouts])
+    to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
+    to_train_model.summary()
+    history = to_train_model.fit_generator(
+        train_generator,
+        validation_data=valid_generator, epochs=EPOCHS,
+        steps_per_epoch=len(train_generator) / batch_size,
+        validation_steps=len(valid_generator), callbacks=[reduce_LR]
+    )
+
+    best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
+    temp_acc = history.history['val_acc'][best_acc_index]
+    if temp_acc > best_acc:
+        best_dense_params = [curr_units, curr_dropouts]
+    best_acc = max(temp_acc, best_acc)
+
+optim_neurons, optim_dropouts = best_dense_params
+# optim_neurons, optim_dropouts = [], []
+meaningless = [
+    layers.Activation,
+    # layers.GlobalAveragePooling2D,
+    # layers.MaxPooling2D,
+    layers.ZeroPadding2D,
+    layers.Add,
+]
 ## optimize conv layers
 filter_size_space = [1, 3]
 num_filter_space = [32, 64, 128, 256]
 pool_size_space = [2, 3]
 pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
+    if type(model.layers[-unfreeze]) in meaningless:
+        continue
     temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
     print(f"Tuning last {unfreeze} layers.")
     time.sleep(3)
