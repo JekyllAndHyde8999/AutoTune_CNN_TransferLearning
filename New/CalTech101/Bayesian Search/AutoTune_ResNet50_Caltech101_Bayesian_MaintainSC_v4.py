@@ -19,7 +19,7 @@ from keras.applications import ResNet50
 from keras.utils import plot_model
 
 reverse_list = lambda l: list(reversed(l))
-MODEL_PLOT_FILE_NAME = __file__.split('.')[0] + '.png'
+
 
 DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 # DATA_FOLDER = "CalTech101"
@@ -117,7 +117,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=new_model.inputs, outputs=X)
@@ -126,13 +126,13 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 # training the original model
 base_model = ResNet50(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
 X = base_model.layers[-2].output
-X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax')(X)
+X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', , kernel_initializer='he_normal')(X)
 base_model = models.Model(inputs=base_model.inputs, outputs=X)
 for i in range(len(base_model.layers)-1):
     base_model.layers[i].trainable = False
 
 base_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-base_model.summary()
+#base_model.summary()
 history = base_model.fit_generator(
     train_generator,
     validation_data=valid_generator, epochs=EPOCHS,
@@ -156,7 +156,7 @@ base_model = ResNet50(include_top=True, weights='imagenet', input_shape=(224, 22
 base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
-base_model.summary()
+#base_model.summary()
 
 ## optimize dense layers
 best_acc = 0
@@ -192,9 +192,9 @@ for num_dense in fc_layer_range:
             j += 1
 
         to_train_model = get_model_dense(temp_model, dense_params)
-        plot_model(to_train_model, to_file=MODEL_PLOT_FILE_NAME)
+        #plot_model(to_train_model, to_file=MODEL_PLOT_FILE_NAME)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        to_train_model.summary()
+        #to_train_model.summary()
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=EPOCHS,
@@ -378,9 +378,9 @@ for i in range(1, len(base_model.layers) + 1):
             j += 1
 
         to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts, reverse_list(temp_acts))
-        plot_model(to_train_model, to_file=MODEL_PLOT_FILE_NAME)
+        #plot_model(to_train_model, to_file=MODEL_PLOT_FILE_NAME)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        to_train_model.summary()
+        #to_train_model.summary()
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=EPOCHS,
