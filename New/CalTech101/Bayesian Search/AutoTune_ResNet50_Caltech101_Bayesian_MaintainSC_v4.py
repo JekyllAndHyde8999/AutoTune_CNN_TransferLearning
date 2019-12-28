@@ -112,7 +112,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 
     # X = layers.Flatten()(X)
     new_model = models.model_from_json(model.to_json())
-    X = new_model.layers[-1].outputs
+    X = new_model.layers[-1].output
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
