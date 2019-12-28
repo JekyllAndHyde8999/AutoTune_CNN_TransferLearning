@@ -148,7 +148,7 @@ for num_dense in fc_layer_range:
             validation_steps=len(valid_generator), callbacks=[reduce_LR]
         )
 
-        best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
+        best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
         log_tuple = ('relu', 'he_normal', None, num_dense, curr_units, curr_dropouts, None, None, None, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
