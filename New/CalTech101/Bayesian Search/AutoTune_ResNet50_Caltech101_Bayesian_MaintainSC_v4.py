@@ -16,8 +16,10 @@ from collections import OrderedDict
 from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks, initializers
 from keras.applications import ResNet50
+from keras.utils import plot_model
 
 reverse_list = lambda l: list(reversed(l))
+MODEL_PLOT_FILE_NAME = __file__.split('.')[0] + '.png'
 
 DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 # DATA_FOLDER = "CalTech101"
@@ -190,6 +192,7 @@ for num_dense in fc_layer_range:
             j += 1
 
         to_train_model = get_model_dense(temp_model, dense_params)
+        plot_model(to_train_model, to_file=MODEL_PLOT_FILE_NAME)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         to_train_model.summary()
         history = to_train_model.fit_generator(
@@ -375,6 +378,7 @@ for i in range(1, len(base_model.layers) + 1):
             j += 1
 
         to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts, reverse_list(temp_acts))
+        plot_model(to_train_model, to_file=MODEL_PLOT_FILE_NAME)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         to_train_model.summary()
         history = to_train_model.fit_generator(
