@@ -132,29 +132,30 @@ best_acc = 0
 best_dense_params = None
 
 for num_dense in fc_layer_range:
-    curr_units = random.sample(units_space, num_dense)
-    curr_dropouts = random.sample(dropouts_space, num_dense)
+    for _ in range(20):
+        curr_units = random.sample(units_space, num_dense)
+        curr_dropouts = random.sample(dropouts_space, num_dense)
 
-    to_train_model = get_model_dense(base_model, [curr_units, curr_dropouts])
-    to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-    to_train_model.summary()
-    history = to_train_model.fit_generator(
-        train_generator,
-        validation_data=valid_generator, epochs=EPOCHS,
-        steps_per_epoch=len(train_generator) / batch_size,
-        validation_steps=len(valid_generator), callbacks=[reduce_LR]
-    )
+        to_train_model = get_model_dense(base_model, [curr_units, curr_dropouts])
+        to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
+        to_train_model.summary()
+        history = to_train_model.fit_generator(
+            train_generator,
+            validation_data=valid_generator, epochs=EPOCHS,
+            steps_per_epoch=len(train_generator) / batch_size,
+            validation_steps=len(valid_generator), callbacks=[reduce_LR]
+        )
 
-    best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
-    temp_acc = history.history['val_acc'][best_acc_index]
+        best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
+        temp_acc = history.history['val_acc'][best_acc_index]
 
-    log_tuple = ('relu', 'he_normal', None, num_dense, curr_units, curr_dropouts, None, None, None, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
-    log_df.loc[log_df.shape[0], :] = log_tuple
-    log_df.to_csv(RESULTS_PATH)
+        log_tuple = ('relu', 'he_normal', None, num_dense, curr_units, curr_dropouts, None, None, None, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_df.loc[log_df.shape[0], :] = log_tuple
+        log_df.to_csv(RESULTS_PATH)
 
-    if temp_acc > best_acc:
-        best_dense_params = [curr_units, curr_dropouts]
-    best_acc = max(temp_acc, best_acc)
+        if temp_acc > best_acc:
+            best_dense_params = [curr_units, curr_dropouts]
+        best_acc = max(temp_acc, best_acc)
 
 optim_neurons, optim_dropouts = best_dense_params
 # optim_neurons, optim_dropouts = [], []
