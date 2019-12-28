@@ -25,8 +25,8 @@ DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
-EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_VGG16", "AutoFCL_AutoConv_VGG16_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+EPOCHS = 50
+RESULTS_PATH = os.path.join("AutoConv_VGG16_new", "AutoFCL_AutoConv_VGG16_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -99,7 +99,7 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=model.inputs, outputs=X)
@@ -127,7 +127,7 @@ base_model = VGG16(input_shape=(224, 224, 3), weights='imagenet', include_top=Fa
 
 ## optimize dense layers
 fc_layer_range = range(1, 3)
-units_space = [2 ** j for j in range(6, 13)]
+units_space = [2 ** j for j in range(6, 11)]
 dropouts_space = [0.1 * j for j in range(10)]
 best_acc = 0
 best_dense_params = None
