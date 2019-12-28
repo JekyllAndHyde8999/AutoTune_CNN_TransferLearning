@@ -126,7 +126,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 # training the original model
 base_model = ResNet50(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
 X = base_model.layers[-2].output
-X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', , kernel_initializer='he_normal')(X)
+X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 base_model = models.Model(inputs=base_model.inputs, outputs=X)
 for i in range(len(base_model.layers)-1):
     base_model.layers[i].trainable = False
