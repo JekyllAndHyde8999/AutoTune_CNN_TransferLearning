@@ -197,14 +197,14 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
             temp_arc.append('avgpool')
             # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
-        elif type(model.layers[-j]) == layers.Activation:
+        elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
             curr_acts.append(model.layers[-j].activation)
-        elif type(model.layers[-j]) == layers.Add:
+        elif type(temp_model.layers[-j]) == layers.Add:
             temp_arc.append('add')
-        elif type(model.layers[-j]) == layers.BatchNormalization:
+        elif type(temp_model.layers[-j]) == layers.BatchNormalization:
             temp_arc.append('batch')
-        elif type(model.layers[-j]) == layers.ZeroPadding2D:
+        elif type(temp_model.layers[-j]) == layers.ZeroPadding2D:
             temp_arc.append('zeropad')
             curr_pad.append(random.sample(pad_size_space, 1)[0])
 
