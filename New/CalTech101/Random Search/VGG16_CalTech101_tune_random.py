@@ -134,9 +134,13 @@ best_acc = 0
 best_dense_params = None
 
 for num_dense in fc_layer_range:
+    print(f"{num_dense} layers.")
     for _ in range(20):
+        print(f"Current FC architecture:")
         curr_units = random.sample(units_space, num_dense)
         curr_dropouts = random.sample(dropouts_space, num_dense)
+        print(f"\t{curr_units}")
+        print(f"\t{curr_dropouts}")
 
         to_train_model = get_model_dense(base_model, [curr_units, curr_dropouts])
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
