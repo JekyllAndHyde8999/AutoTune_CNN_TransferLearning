@@ -85,8 +85,8 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             X = layers.MaxPooling2D(pool_size=int(pool_size))(X)
         elif architecture[i] == 'avgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
-            pool_size = pool_sizes.pop(0)
-            X = layers.GlobalAveragePooling2D(pool_size=int(pool_size))(X)
+            # pool_size = pool_sizes.pop(0)
+            X = layers.GlobalAveragePooling2D()(X)
         elif architecture[i] == 'batch':
             assert type(model.layers[global_index]) == layers.BatchNormalization
             X = layers.BatchNormalization()(X)
@@ -196,7 +196,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
             curr_pool_size.append(random.sample(pool_size_space, 1)[0])
         elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
             temp_arc.append('avgpool')
-            curr_pool_size.append(random.sample(pool_size_space, 1)[0])
+            # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
         elif type(model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
             curr_acts.append(model.layers[-j].activation)
