@@ -25,8 +25,8 @@ DATA_FOLDER = "/media/kishank/Disk 3/shabbeer/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
-EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_ResNet50_new", "AutoFCL_AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v1.csv") # The path to the results file
+EPOCHS = 50
+RESULTS_PATH = os.path.join("AutoConv_ResNet50_new", "AutoFCL_AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -153,7 +153,7 @@ for num_dense in fc_layer_range:
             validation_steps=len(valid_generator), callbacks=[reduce_LR]
         )
 
-        best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
+        best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
         if temp_acc > best_acc:
             best_dense_params = [curr_units, curr_dropouts]
@@ -199,7 +199,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
             # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
         elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
-            curr_acts.append(model.layers[-j].activation)
+            curr_acts.append(temp_model.layers[-j].activation)
         elif type(temp_model.layers[-j]) == layers.Add:
             temp_arc.append('add')
         elif type(temp_model.layers[-j]) == layers.BatchNormalization:
@@ -220,7 +220,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         validation_steps=len(valid_generator), callbacks=[reduce_LR]
     )
 
-    best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
+    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
     temp_acc = history.history['val_acc'][best_acc_index]
 
     log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
