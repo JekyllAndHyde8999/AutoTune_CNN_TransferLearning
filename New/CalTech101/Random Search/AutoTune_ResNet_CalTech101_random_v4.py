@@ -49,7 +49,7 @@ except FileNotFoundError:
 
 
 def get_model_dense(model, dense_params):
-    X = model.layers[-2].output
+    X = model.layers[-1].output
     # X = layers.Flatten()(X)
 
     for units, dropout in zip(*dense_params):
