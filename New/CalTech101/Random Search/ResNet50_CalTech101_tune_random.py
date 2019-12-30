@@ -50,7 +50,7 @@ except FileNotFoundError:
 
 def get_model_dense(model, dense_params):
     X = model.layers[-1].output
-    X = layers.Flatten()(X)
+    # X = layers.Flatten()(X)
 
     for units, dropout in zip(*dense_params):
         X = layers.Dense(units, activation='relu', kernel_initializer='he_normal')(X)
@@ -94,7 +94,7 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
 
-    X = layers.Flatten()(X)
+    # X = layers.Flatten()(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
