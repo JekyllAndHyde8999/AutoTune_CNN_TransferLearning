@@ -26,7 +26,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_ResNet50", "AutoFCL_AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_ResNet50_new", "AutoFCL_AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -49,13 +49,13 @@ except FileNotFoundError:
 
 
 def get_model_dense(model, dense_params):
-    X = model.layers[-1].output
+    X = model.layers[-2].output
     # X = layers.Flatten()(X)
 
     for units, dropout in zip(*dense_params):
         X = layers.Dense(units, activation='relu', kernel_initializer='he_normal')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=model.inputs, outputs=X)
@@ -99,7 +99,7 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=model.inputs, outputs=X)
