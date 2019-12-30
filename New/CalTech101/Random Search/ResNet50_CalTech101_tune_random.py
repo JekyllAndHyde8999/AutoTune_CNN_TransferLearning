@@ -20,7 +20,7 @@ from keras.applications import ResNet50
 
 reverse_list = lambda l: list(reversed(l))
 
-DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
+DATA_FOLDER = "/media/kishank/Disk 3/shabbeer/CalTech101"
 # DATA_FOLDER = "CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
@@ -123,13 +123,13 @@ history = to_train_model.fit_generator(
 )
 
 base_model = ResNet50(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
-base_model = model.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
+base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
 ## optimize dense layers
 fc_layer_range = range(1, 3)
-units_space = [2 ** j for j in range(6, 13)]
+units_space = [2 ** j for j in range(6, 11)]
 dropouts_space = [0.1 * j for j in range(10)]
 best_acc = 0
 best_dense_params = None
