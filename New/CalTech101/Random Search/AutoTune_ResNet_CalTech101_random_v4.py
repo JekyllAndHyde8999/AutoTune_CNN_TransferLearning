@@ -155,6 +155,11 @@ for num_dense in fc_layer_range:
 
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
+
+        log_tuple = ('relu', 'he_normal', None, num_dense, curr_units, curr_dropouts, None, None, None, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_df.loc[log_df.shape[0], :] = log_tuple
+        log_df.to_csv(RESULTS_PATH)
+
         if temp_acc > best_acc:
             best_dense_params = [curr_units, curr_dropouts]
         best_acc = max(temp_acc, best_acc)
