@@ -1,7 +1,7 @@
 """
 tunes the hyperparameters of the conv and maxpool layers and varies the number of dense layers to be added to the model
 with bayesian optimization
-ignoring skip connections
+maintaining skip connections
 """
 
 import time
