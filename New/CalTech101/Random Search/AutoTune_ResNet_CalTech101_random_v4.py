@@ -181,55 +181,57 @@ pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
-    temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
-    print(f"Tuning last {unfreeze} layers.")
-    time.sleep(3)
 
-    curr_filter_size = []
-    curr_num_filters = []
-    curr_pool_size = []
-    curr_acts = []
-    curr_pad = []
-    temp_arc = []
-    for j in range(1, unfreeze + 1):
-        if type(temp_model.layers[-j]) == layers.Conv2D:
-            temp_arc.append('conv')
-            curr_filter_size.append(random.sample(filter_size_space, 1)[0])
-            curr_num_filters.append(random.sample(num_filter_space, 1)[0])
-        elif type(temp_model.layers[-j]) == layers.MaxPooling2D:
-            temp_arc.append('maxpool')
-            curr_pool_size.append(random.sample(pool_size_space, 1)[0])
-        elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
-            temp_arc.append('avgpool')
-            # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
-        elif type(temp_model.layers[-j]) == layers.Activation:
-            temp_arc.append('activation')
-            curr_acts.append(temp_model.layers[-j].activation)
-        elif type(temp_model.layers[-j]) == layers.Add:
-            temp_arc.append('add')
-        elif type(temp_model.layers[-j]) == layers.BatchNormalization:
-            temp_arc.append('batch')
-        elif type(temp_model.layers[-j]) == layers.ZeroPadding2D:
-            temp_arc.append('zeropad')
-            curr_pad.append(random.sample(pad_size_space, 1)[0])
+    for _ in range(20):
+        temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
+        print(f"Tuning last {unfreeze} layers.")
+        time.sleep(3)
 
-    print(f"temp_arc: {temp_arc}")
+        curr_filter_size = []
+        curr_num_filters = []
+        curr_pool_size = []
+        curr_acts = []
+        curr_pad = []
+        temp_arc = []
+        for j in range(1, unfreeze + 1):
+            if type(temp_model.layers[-j]) == layers.Conv2D:
+                temp_arc.append('conv')
+                curr_filter_size.append(random.sample(filter_size_space, 1)[0])
+                curr_num_filters.append(random.sample(num_filter_space, 1)[0])
+            elif type(temp_model.layers[-j]) == layers.MaxPooling2D:
+                temp_arc.append('maxpool')
+                curr_pool_size.append(random.sample(pool_size_space, 1)[0])
+            elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
+                temp_arc.append('avgpool')
+                # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
+            elif type(temp_model.layers[-j]) == layers.Activation:
+                temp_arc.append('activation')
+                curr_acts.append(temp_model.layers[-j].activation)
+            elif type(temp_model.layers[-j]) == layers.Add:
+                temp_arc.append('add')
+            elif type(temp_model.layers[-j]) == layers.BatchNormalization:
+                temp_arc.append('batch')
+            elif type(temp_model.layers[-j]) == layers.ZeroPadding2D:
+                temp_arc.append('zeropad')
+                curr_pad.append(random.sample(pad_size_space, 1)[0])
 
-    to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
-    to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-    to_train_model.summary()
-    history = to_train_model.fit_generator(
-        train_generator,
-        validation_data=valid_generator, epochs=EPOCHS,
-        steps_per_epoch=len(train_generator) / batch_size,
-        validation_steps=len(valid_generator), callbacks=[reduce_LR]
-    )
+        print(f"temp_arc: {temp_arc}")
 
-    best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
-    temp_acc = history.history['val_acc'][best_acc_index]
+        to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
+        to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
+        to_train_model.summary()
+        history = to_train_model.fit_generator(
+            train_generator,
+            validation_data=valid_generator, epochs=EPOCHS,
+            steps_per_epoch=len(train_generator) / batch_size,
+            validation_steps=len(valid_generator), callbacks=[reduce_LR]
+        )
 
-    log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
-    log_df.loc[log_df.shape[0], :] = log_tuple
-    log_df.to_csv(RESULTS_PATH)
+        best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
+        temp_acc = history.history['val_acc'][best_acc_index]
 
-    best_acc = max(best_acc, temp_acc)
+        log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_df.loc[log_df.shape[0], :] = log_tuple
+        log_df.to_csv(RESULTS_PATH)
+
+        best_acc = max(best_acc, temp_acc)
