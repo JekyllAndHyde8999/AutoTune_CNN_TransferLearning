@@ -25,8 +25,8 @@ DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
-EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_DenseNet121", "AutoFCL_AutoConv_DenseNet121_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+EPOCHS = 50
+RESULTS_PATH = os.path.join("AutoConv_DenseNet121_new", "AutoFCL_AutoConv_DenseNet121_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -55,7 +55,7 @@ def get_model_dense(model, dense_params):
     for units, dropout in zip(*dense_params):
         X = layers.Dense(units, activation='relu', kernel_initializer='he_normal')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=model.inputs, outputs=X)
@@ -99,7 +99,7 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=model.inputs, outputs=X)
@@ -123,20 +123,20 @@ history = to_train_model.fit_generator(
 )
 
 base_model = DenseNet121(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
-base_model = model.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
+base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
 ## optimize dense layers
 fc_layer_range = range(1, 3)
-units_space = [2 ** j for j in range(6, 13)]
+units_space = [2 ** j for j in range(6, 11)]
 dropouts_space = [0.1 * j for j in range(10)]
 best_acc = 0
 best_dense_params = None
 
 for num_dense in fc_layer_range:
     print(f"{num_dense} layers.")
-    for _ in range(20):
+    for _ in range(15):
         print(f"Current FC architecture:")
         curr_units = random.sample(units_space, num_dense)
         curr_dropouts = random.sample(dropouts_space, num_dense)
@@ -197,17 +197,17 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
             temp_arc.append('avgpool')
             # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
-        elif type(model.layers[-j]) == layers.Activation:
+        elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
-            curr_acts.append(model.layers[-j].activation)
-        elif type(model.layers[-j]) == layers.Add:
+            curr_acts.append(temp_model.layers[-j].activation)
+        elif type(temp_model.layers[-j]) == layers.Add:
             temp_arc.append('add')
-        elif type(model.layers[-j]) == layers.BatchNormalization:
+        elif type(temp_model.layers[-j]) == layers.BatchNormalization:
             temp_arc.append('batch')
-        elif type(model.layers[-j]) == layers.ZeroPadding2D:
+        elif type(temp_model.layers[-j]) == layers.ZeroPadding2D:
             temp_arc.append('zeropad')
             curr_pad.append(random.sample(pad_size_space, 1)[0])
-        elif type(model.layers[-j]) == layers.Concatenate:
+        elif type(temp_model.layers[-j]) == layers.Concatenate:
             temp_arc.append('concat')
 
     print(f"temp_arc: {temp_arc}")
