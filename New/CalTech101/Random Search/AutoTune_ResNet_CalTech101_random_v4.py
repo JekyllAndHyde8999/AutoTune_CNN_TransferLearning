@@ -44,7 +44,7 @@ ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
 except FileNotFoundError:
-    log_df = pd.DataFrame(columns=['index', 'activation', 'weight_initializer', 'num_layers_tuned', 'num_fc_layers', 'num_neurons', 'dropouts', 'filter_sizes', 'num_filters', 'stride_sizes', 'train_loss', 'train_acc', 'val_loss', 'val_acc'])
+    log_df = pd.DataFrame(columns=['index', 'activation', 'weight_initializer', 'num_layers_tuned', 'num_fc_layers', 'num_neurons', 'dropouts', 'filter_sizes', 'num_filters', 'stride_sizes', 'pool_sizes', 'train_loss', 'train_acc', 'val_loss', 'val_acc'])
     log_df = log_df.set_index('index')
 
 
@@ -168,7 +168,7 @@ optim_neurons, optim_dropouts = best_dense_params
 # optim_neurons, optim_dropouts = [], []
 meaningless = [
     layers.Activation,
-    # layers.GlobalAveragePooling2D,
+    layers.GlobalAveragePooling2D,
     # layers.MaxPooling2D,
     layers.ZeroPadding2D,
     layers.Add,
@@ -230,7 +230,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
-        log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
