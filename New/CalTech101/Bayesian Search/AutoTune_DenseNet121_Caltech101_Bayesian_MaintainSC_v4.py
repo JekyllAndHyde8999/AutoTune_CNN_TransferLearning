@@ -100,7 +100,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             # X = layers.ZeroPadding2D(padding=int(filter_size))(X)
             model.layers[global_index].trainable = True
             model.layers[global_index].padding = filter_size
-        elif architecture[i] == 'avgpool':
+        elif architecture[i] == 'globalavgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
             # X = layers.GlobalAveragePooling2D()(X)
         elif architecture[i] == 'batch':

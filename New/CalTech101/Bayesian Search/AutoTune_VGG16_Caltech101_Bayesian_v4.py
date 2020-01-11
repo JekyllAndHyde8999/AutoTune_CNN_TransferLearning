@@ -85,7 +85,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
         elif architecture[i] == 'maxpool':
             assert type(model.layers[global_index]) == layers.MaxPooling2D
             X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
-        elif architecture[i] == 'avgpool':
+        elif architecture[i] == 'globalavgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
             X = layers.GlobalAveragePooling2D(pool_size=int(filter_size))(X)
         elif architecture[i] == 'batch':
