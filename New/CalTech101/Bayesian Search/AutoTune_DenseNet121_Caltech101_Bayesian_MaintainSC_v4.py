@@ -278,7 +278,7 @@ for i in range(1, len(base_model.layers) + 1):
         elif type(temp_model.layers[-j]) == layers.MaxPooling2D:
             temp_arc.append('maxpool')
         elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
-            temp_arc.append('avgpool')
+            temp_arc.append('globalavgpool')
         elif type(temp_model.layers[-j]) == layers.Add:
             temp_arc.append('add')
         elif type(temp_model.layers[-j]) == layers.BatchNormalization:
@@ -323,11 +323,11 @@ for i in range(1, len(base_model.layers) + 1):
                     {'name': 'zeropad_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
-        elif temp_arc[iter_] == 'avgpool':
-            print("I am in avgpool")
+        elif temp_arc[iter_] == 'globalavgpool':
+            print("I am in globalavgpool")
             bounds.extend(
                 [
-                    {'name': 'avgpool_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3]},
+                    {'name': 'avgpool_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': 'avgpool_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': 'avgpool_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
@@ -366,7 +366,8 @@ for i in range(1, len(base_model.layers) + 1):
         j = 0
         while j < x.shape[1]:
             conv_params[temp_arc[j // 3] + '_filter_size_' + str((j // 3) + 1)] = x[:, j]
-            filter_sizes.append(int(x[:, j]))
+            if temp_arc[j // 3] not in meaningless:
+                filter_sizes.append(int(x[:, j]))
             j += 1
             conv_params[temp_arc[j // 3] + '_num_filters_' + str((j // 3) + 1)] = x[:, j]
             if temp_arc[j // 3] == 'conv':
