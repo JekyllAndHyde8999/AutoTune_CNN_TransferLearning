@@ -259,6 +259,7 @@ meaningless = [
     # layers.MaxPooling2D,
     layers.ZeroPadding2D,
     layers.Add,
+    layers.BatchNormalization
 ]
 ## optimize conv layers
 
