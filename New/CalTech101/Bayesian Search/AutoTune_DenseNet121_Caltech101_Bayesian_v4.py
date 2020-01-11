@@ -116,7 +116,7 @@ for i in range(len(base_model.layers)-1):
     base_model.layers[i].trainable = False
 
 base_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-base_model.summary()
+# base_model.summary()
 history = base_model.fit_generator(
     train_generator,
     validation_data=valid_generator, epochs=EPOCHS,
@@ -140,7 +140,7 @@ base_model = DenseNet121(include_top=True, weights='imagenet', input_shape=(224,
 base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
-base_model.summary()
+# base_model.summary()
 
 ## optimize dense layers
 best_acc = 0
@@ -177,7 +177,7 @@ for num_dense in fc_layer_range:
 
         to_train_model = get_model_dense(temp_model, dense_params)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        to_train_model.summary()
+        # to_train_model.summary()
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=EPOCHS,
@@ -357,7 +357,7 @@ for i in range(1, len(base_model.layers) + 1):
 
         to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts, reverse_list(temp_acts))
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        to_train_model.summary()
+        # to_train_model.summary()
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=EPOCHS,

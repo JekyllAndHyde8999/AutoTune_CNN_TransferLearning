@@ -148,7 +148,7 @@ log_tuple = ('relu', 'he_normal', 0, 1, [], [], [], [], [], history.history['los
 #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
 #     log_df.loc[row_index] = log_tuple
 # except:
-log_df.loc[log_df.shape[0]] = log_tuple
+log_df.loc[log_df.shape[0], :] = log_tuple
 log_df.to_csv(RESULTS_PATH)
 
 # tuning the model
@@ -214,7 +214,7 @@ for num_dense in fc_layer_range:
         #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
         #     log_df.loc[row_index] = log_tuple
         # except:
-        log_df.loc[log_df.shape[0]] = log_tuple
+        log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
         return min(history.history['val_loss'])
@@ -401,7 +401,7 @@ for i in range(1, len(base_model.layers) + 1):
         #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
         #     log_df.loc[row_index] = log_tuple
         # except:
-        log_df.loc[log_df.shape[0]] = log_tuple
+        log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
         return min(history.history['val_loss'])
