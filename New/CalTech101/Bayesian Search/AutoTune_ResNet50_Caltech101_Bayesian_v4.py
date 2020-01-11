@@ -238,7 +238,7 @@ while k < len(req_opt_.x_opt):
 best_acc = 0
 meaningless = [
     layers.Activation,
-    # layers.GlobalAveragePooling2D,
+    layers.GlobalAveragePooling2D,
     # layers.MaxPooling2D,
     layers.BatchNormalization,
     layers.ZeroPadding2D,
