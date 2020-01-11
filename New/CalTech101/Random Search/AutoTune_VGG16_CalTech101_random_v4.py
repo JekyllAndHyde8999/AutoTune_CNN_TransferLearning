@@ -83,10 +83,10 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             assert type(model.layers[global_index]) == layers.MaxPooling2D
             pool_size = pool_sizes.pop(0)
             X = layers.MaxPooling2D(pool_size=int(pool_size))(X)
-        elif architecture[i] == 'avgpool':
+        elif architecture[i] == 'globalavgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
-            pool_size = pool_sizes.pop(0)
-            X = layers.GlobalAveragePooling2D(pool_size=int(pool_size))(X)
+            # pool_size = pool_sizes.pop(0)
+            X = layers.GlobalAveragePooling2D()(X)
         elif architecture[i] == 'batch':
             assert type(model.layers[global_index]) == layers.BatchNormalization
             X = layers.BatchNormalization()(X)
@@ -111,7 +111,7 @@ for i in range(len(base_model.layers)):
 
 ## training original model
 X = base_model.layers[-2].output
-X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax')(X)
+X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 to_train_model = models.Model(inputs=base_model.inputs, outputs=X)
 to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
 # to_train_model.summary()
@@ -199,8 +199,8 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 temp_arc.append('maxpool')
                 curr_pool_size.append(random.sample(pool_size_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
-                temp_arc.append('avgpool')
-                curr_pool_size.append(random.sample(pool_size_space, 1)[0])
+                temp_arc.append('globalavgpool')
+                # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
             elif type(model.layers[-j]) == layers.Activation:
                 temp_arc.append('activation')
                 curr_acts.append(model.layers[-j].activation)

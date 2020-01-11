@@ -100,7 +100,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             # X = layers.ZeroPadding2D(padding=int(filter_size))(X)
             model.layers[global_index].trainable = True
             model.layers[global_index].padding = filter_size
-        elif architecture[i] == 'avgpool':
+        elif architecture[i] == 'globalavgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
             # X = layers.GlobalAveragePooling2D()(X)
         elif architecture[i] == 'batch':
@@ -233,7 +233,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 temp_arc.append('maxpool')
                 curr_pool_size.append(random.sample(pool_size_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
-                temp_arc.append('avgpool')
+                temp_arc.append('globalavgpool')
                 # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.Activation:
                 temp_arc.append('activation')
