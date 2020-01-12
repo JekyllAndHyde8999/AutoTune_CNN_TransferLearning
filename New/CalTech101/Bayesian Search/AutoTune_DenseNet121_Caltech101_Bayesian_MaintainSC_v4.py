@@ -27,7 +27,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_DenseNet121_new", "AutoConv_DenseNet121_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_DenseNet121_new1", "AutoConv_DenseNet121_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
