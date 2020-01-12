@@ -285,7 +285,7 @@ for i in range(1, len(base_model.layers) + 1):
             bounds.extend(
                 [
                     {'name': 'conv_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3, 5]},
-                    {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [32, 64, 128, 256]},
+                    {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [64, 128, 256, 512]},
                     {'name': 'conv_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
