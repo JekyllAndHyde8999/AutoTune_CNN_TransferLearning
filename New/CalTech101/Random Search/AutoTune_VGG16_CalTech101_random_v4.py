@@ -26,7 +26,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 50
-RESULTS_PATH = os.path.join("AutoConv_VGG16_new", "AutoFCL_AutoConv_VGG16_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_VGG16_new1", "AutoConv_VGG16_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -55,7 +55,7 @@ def get_model_dense(model, dense_params):
     for units, dropout in zip(*dense_params):
         X = layers.Dense(units, activation='relu', kernel_initializer='he_normal')(X)
         X = layers.BatchNormalization()(X)
-        X = layers.Dropout(dropout)(X)
+        X = layers.Dropout(float(dropout))(X)
 
     X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
     return models.Model(inputs=model.inputs, outputs=X)
