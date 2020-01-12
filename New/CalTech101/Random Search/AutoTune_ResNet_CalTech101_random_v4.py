@@ -26,7 +26,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 50
-RESULTS_PATH = os.path.join("AutoConv_ResNet50_new", "AutoFCL_AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_ResNet50_new1", "AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -174,7 +174,7 @@ meaningless = [
     layers.Add,
 ]
 ## optimize conv layers
-filter_size_space = [2 3, 5]
+filter_size_space = [2, 3, 5]
 num_filter_space = [64, 128, 256, 512]
 pool_size_space = [2, 3]
 pad_size_space = list(range(1, 5))
