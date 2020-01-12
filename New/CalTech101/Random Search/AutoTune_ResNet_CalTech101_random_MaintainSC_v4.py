@@ -205,8 +205,8 @@ meaningless = [
     layers.Add,
 ]
 ## optimize conv layers
-filter_size_space = [1, 3]
-num_filter_space = [32, 64, 128, 256]
+filter_size_space = [2, 3, 5]
+num_filter_space = [64, 128, 256, 512]
 pool_size_space = [2, 3]
 pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
