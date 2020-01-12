@@ -135,7 +135,7 @@ best_dense_params = None
 
 for num_dense in fc_layer_range:
     print(f"{num_dense} layers.")
-    for _ in range(20):
+    for _ in range(15):
         print(f"Current FC architecture:")
         curr_units = random.sample(units_space, num_dense)
         curr_dropouts = random.sample(dropouts_space, num_dense)
@@ -173,14 +173,14 @@ meaningless = [
     layers.Add,
 ]
 ## optimize conv layers
-filter_size_space = [1, 3]
-num_filter_space = [32, 64, 128, 256]
+filter_size_space = [2, 3, 5]
+num_filter_space = [64, 128, 256, 512]
 pool_size_space = [2, 3]
 for unfreeze in range(1, len(base_model.layers) + 1):
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
 
-    for _ in range(20):
+    for _ in range(15):
         temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
         print(f"Tuning last {unfreeze} layers.")
         time.sleep(3)
