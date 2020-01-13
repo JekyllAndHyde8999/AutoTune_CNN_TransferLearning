@@ -223,7 +223,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
             validation_steps=len(valid_generator), callbacks=[reduce_LR]
         )
 
-        best_acc_index = history.history['val_acc'].index(history.history['val_acc'])
+        best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
         log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
