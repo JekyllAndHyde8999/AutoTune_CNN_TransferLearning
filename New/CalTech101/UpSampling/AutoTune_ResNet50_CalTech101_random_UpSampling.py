@@ -49,7 +49,7 @@ except FileNotFoundError:
     log_df = log_df.set_index('index')
 
 
-def upsample(shappe, target_size=5):
+def upsample(shape, target_size=5):
     upsampling_factor = math.ceil(target_size / shape[1])
     return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
 
