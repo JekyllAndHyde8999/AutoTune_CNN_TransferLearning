@@ -27,7 +27,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 1
-RESULTS_PATH = os.path.join("AutoConv_DenseNet121", "AutoFCL_AutoConv_DenseNet121_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_DenseNet121_new1", "AutoConv_DenseNet121_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -300,8 +300,8 @@ for i in range(1, len(base_model.layers) + 1):
             print("I am in conv")
             bounds.extend(
                 [
-                    {'name': 'conv_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1, 3]},
-                    {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [32, 64, 128, 256]},
+                    {'name': 'conv_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3, 5]},
+                    {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [64, 128, 256, 512]},
                     {'name': 'conv_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )

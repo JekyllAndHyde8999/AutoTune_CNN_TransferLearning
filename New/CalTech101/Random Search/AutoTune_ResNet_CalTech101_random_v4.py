@@ -26,7 +26,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 50
-RESULTS_PATH = os.path.join("AutoConv_ResNet50_new", "AutoFCL_AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_ResNet50_new1", "AutoConv_ResNet50_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -136,7 +136,7 @@ best_dense_params = None
 
 for num_dense in fc_layer_range:
     print(f"{num_dense} layers.")
-    for _ in range(20):
+    for _ in range(15):
         print(f"Current FC architecture:")
         curr_units = random.sample(units_space, num_dense)
         curr_dropouts = random.sample(dropouts_space, num_dense)
@@ -174,15 +174,15 @@ meaningless = [
     layers.Add,
 ]
 ## optimize conv layers
-filter_size_space = [1, 3]
-num_filter_space = [32, 64, 128, 256]
+filter_size_space = [2, 3, 5]
+num_filter_space = [64, 128, 256, 512]
 pool_size_space = [2, 3]
 pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
 
-    for _ in range(20):
+    for _ in range(15):
         temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
         print(f"Tuning last {unfreeze} layers.")
         time.sleep(3)
