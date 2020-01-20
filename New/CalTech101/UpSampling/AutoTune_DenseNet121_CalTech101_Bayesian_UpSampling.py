@@ -50,7 +50,7 @@ except FileNotFoundError:
 
 
 def upsample(shape, target_size=5):
-    upsampling_factor = math.ceil(target_size / shape[1])
+    upsampling_factor = math.ceil(target_size / shape[1].value)
     return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
 
 
