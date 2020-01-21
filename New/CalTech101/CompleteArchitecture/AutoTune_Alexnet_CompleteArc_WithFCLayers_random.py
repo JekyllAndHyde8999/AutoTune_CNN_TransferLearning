@@ -1,9 +1,3 @@
-"""
-optimize the resnet architecture using randomsearch.
-Optimize dense layers first and use the optimum architecture to optimize the conv layers one by one.
-"""
-
-
 import time
 import os
 import math
@@ -17,7 +11,8 @@ from itertools import product, combinations
 from collections import OrderedDict
 from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks, initializers
-from keras.applications import VGG16
+# from keras.applications import AlexNet
+from alex import AlexNet
 
 reverse_list = lambda l: list(reversed(l))
 
@@ -27,7 +22,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 50
-RESULTS_PATH = os.path.join("AutoConv_VGG16_new", "AutoFCL_AutoConv_VGG16_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_AlexNet_new", "AutoFCL_AutoConv_AlexNet_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -91,7 +86,7 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
 
-    # X = layers.Flatten()(X)
+    X = layers.Flatten()(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
@@ -102,7 +97,8 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
     return models.Model(inputs=model.inputs, outputs=X)
 
 
-base_model = VGG16(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
+# base_model = AlexNet(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
+base_model = AlexNet(input_shape=(224, 224, 3))
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
@@ -119,13 +115,14 @@ history = to_train_model.fit_generator(
     validation_steps=len(valid_generator), callbacks=[reduce_LR]
 )
 
-base_model = VGG16(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
+# base_model = AlexNet(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
+base_model = AlexNet(input_shape=(224, 224, 3))
 base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
 best_acc = 0
-optim_neurons, optim_dropouts = [], []
+# optim_neurons, optim_dropouts = [], []
 meaningless = [
     layers.Activation,
     layers.GlobalAveragePooling2D,
@@ -137,6 +134,8 @@ meaningless = [
 filter_size_space = [1, 3]
 num_filter_space = [32, 64, 128, 256]
 pool_size_space = [2, 3]
+units_space = [2 ** j for j in range(6, 11)]
+dropouts_space = np.arange(0, 1, step=0.1)
 pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
     if type(base_model.layers[-unfreeze]) in meaningless:
@@ -152,6 +151,8 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         curr_pool_size = []
         curr_acts = []
         curr_pad = []
+        curr_units  []
+        curr_dropouts = []
         temp_arc = []
         for j in range(1, unfreeze + 1):
             if type(temp_model.layers[-j]) == layers.Conv2D:
@@ -174,10 +175,14 @@ for unfreeze in range(1, len(base_model.layers) + 1):
             elif type(temp_model.layers[-j]) == layers.ZeroPadding2D:
                 temp_arc.append('zeropad')
                 curr_pad.append(random.sample(pad_size_space, 1)[0])
+            elif type(temp_model.layers[-j]) == layers.Dense:
+                temp_arc.append('dense')
+                curr_units.append(random.sample(units_space, 1)[0])
+                curr_dropouts.append(random.sample(dropouts_space, 1)[0])
 
         print(f"temp_arc: {temp_arc}")
 
-        to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
+        to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), curr_units, curr_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         # to_train_model.summary()
         history = to_train_model.fit_generator(
@@ -190,7 +195,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
-        log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_tuple = ('relu', 'he_normal', unfreeze, len(curr_units), curr_units, curr_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 

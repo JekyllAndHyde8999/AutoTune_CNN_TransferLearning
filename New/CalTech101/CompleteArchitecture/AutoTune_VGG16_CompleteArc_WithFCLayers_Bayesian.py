@@ -1,9 +1,3 @@
-"""
-tunes the hyperparameters of the conv and maxpool layers and varies the number of dense layers to be added to the model
-with bayesian optimization
-ignoring skip connections
-"""
-
 import time
 import os
 import math
@@ -26,7 +20,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 50
-RESULTS_PATH = os.path.join("AutoConv_VGG16_new", "AutoFCL_AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_VGG16_new1", "Upsampling_AutoConv_VGG16_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -90,10 +84,17 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
 
-    # X = layers.Flatten()(X)
+    X = layers.Flatten()(X)
 
-    for units, dropout in zip(optim_neurons, optim_dropouts):
-        X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
+    # for units, dropout in zip(optim_neurons, optim_dropouts):
+    #     X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
+    #     X = layers.BatchNormalization()(X)
+    #     X = layers.Dropout(dropout)(X)
+    dense_params = OrderedDict(filter(lambda x: x[0].startswith('dense'), conv_params.items()))
+    for i in range(len(dense_params) // 3):
+        units = int(dense_params['dense_filter_size_' + str(i + 1)])
+        dropout = float(dense_params['dense_num_filters_' + str(i + 1)])
+        X = layers.Dense(units, activation='relu')(X)
         X = layers.BatchNormalization()(X)
         X = layers.Dropout(dropout)(X)
 
@@ -172,6 +173,8 @@ for i in range(1, len(base_model.layers) + 1):
             temp_arc.append('batch')
         elif type(temp_model.layers[-j]) == layers.ZeroPadding2D:
             temp_arc.append('zeropad')
+        elif type(temp_model.layers[-j]) == layers.Dense:
+            temp_arc.append('dense')
         elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
             temp_acts.append(temp_model.layers[-j].activation)
@@ -188,8 +191,17 @@ for i in range(1, len(base_model.layers) + 1):
             bounds.extend(
                 [
                     {'name': 'conv_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3, 5]},
-                    {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [32, 64, 128, 256]},
+                    {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [64, 128, 256, 512]},
                     {'name': 'conv_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                ]
+            )
+        if temp_arc[iter_] == 'dense':
+            print("I am in dense")
+            bounds.extend(
+                [
+                    {'name': 'dense_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2 ** j for j in range(6, 11)]},
+                    {'name': 'dense_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': np.arange(0, 1, step=0.1)},
+                    {'name': 'dense_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
         elif temp_arc[iter_] == 'maxpool':
