@@ -26,7 +26,13 @@ RESULTS_PATH = os.path.join("AutoConv_AlexNet_new", "AutoFCL_AutoConv_AlexNet_ra
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
-datagen = image.ImageDataGenerator(preprocessing_function=keras.applications.vgg16.preprocess_input) # creating an instance of the data generator
+datagen = ImageDataGenerator(
+    featurewise_center=True,
+    featurewise_std_normalization=True,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    horizontal_flip=True) # creating an instance of the data generator
 train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for training data
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
