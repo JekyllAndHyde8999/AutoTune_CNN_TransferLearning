@@ -27,7 +27,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 50
-RESULTS_PATH = os.path.join("AutoConv_DenseNet121_new", "AutoFCL_AutoConv_DenseNet121_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_DenseNet121_new1", "upsampling_AutoConv_DenseNet121_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_bayes_opt_v1.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -135,8 +135,8 @@ meaningless = [
     layers.Add,
 ]
 ## optimize conv layers
-filter_size_space = [1, 3]
-num_filter_space = [32, 64, 128, 256]
+filter_size_space = [2, 3, 5]
+num_filter_space = [64, 128, 256, 512]
 pool_size_space = [2, 3]
 pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
