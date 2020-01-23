@@ -47,6 +47,11 @@ except FileNotFoundError:
     log_df = log_df.set_index('index')
 
 
+def upsample(shape, target_size=5):
+    upsampling_factor = math.ceil(target_size / shape[1].value)
+    return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
+
+
 def get_model_dense(model, dense_params):
     X = model.layers[-1].output
     # X = layers.Flatten()(X)
@@ -82,10 +87,18 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 
         if architecture[i] == 'conv':
             assert type(model.layers[global_index]) == layers.Conv2D
-            X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), strides=(int(stride_size), int(stride_size)), kernel_initializer='he_normal', activation='relu')(X)
+            try:
+                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), strides=(int(stride_size), int(stride_size)), kernel_initializer='he_normal', activation='relu')(X)
+            except:
+                X = upsample(X.shape)(X)
+                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), strides=(int(stride_size), int(stride_size)), kernel_initializer='he_normal', activation='relu')(X)
         elif architecture[i] == 'maxpool':
             assert type(model.layers[global_index]) == layers.MaxPooling2D
-            X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
+            try:
+                X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
+            except:
+                X = upsample(X.shape)(X)
+                X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
         elif architecture[i] == 'globalavgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
             X = layers.GlobalAveragePooling2D()(X)
