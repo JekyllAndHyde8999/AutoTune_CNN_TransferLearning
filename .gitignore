@@ -1,0 +1,2 @@
+# ignore all h5 files (too big)
+*.h5
