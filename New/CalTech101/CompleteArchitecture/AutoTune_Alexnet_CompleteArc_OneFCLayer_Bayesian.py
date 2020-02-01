@@ -20,7 +20,7 @@ from keras import layers, models, optimizers, callbacks, initializers
 # from alex import AlexNet
 
 reverse_list = lambda l: list(reversed(l))
-load = lambda : models.load_model("alexnet_imagenet.h5")
+load = lambda : models.load_model("/media/shabbeer/62c2fcfb-4a8a-47d2-88f8-fdd9a0d89adc/Research_PhD/alexnet_imagenet.h5")
 
 DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 # DATA_FOLDER = "CalTech101"
