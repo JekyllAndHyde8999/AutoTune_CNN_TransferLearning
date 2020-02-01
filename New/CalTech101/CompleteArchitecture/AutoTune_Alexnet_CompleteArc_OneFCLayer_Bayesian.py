@@ -17,9 +17,10 @@ from collections import OrderedDict
 from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks, initializers
 # from keras.applications import AlexNet
-from alex import AlexNet
+# from alex import AlexNet
 
 reverse_list = lambda l: list(reversed(l))
+load = lambda : models.load_model("alexnet_imagenet.h5")
 
 DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 # DATA_FOLDER = "CalTech101"
@@ -37,7 +38,8 @@ datagen = ImageDataGenerator(
     rotation_range=20,
     width_shift_range=0.2,
     height_shift_range=0.2,
-    horizontal_flip=True) # creating an instance of the data generator
+    horizontal_flip=True,
+    data_format="channels_first") # creating an instance of the data generator
 train_generator = datagen.flow_from_directory(TRAIN_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for training data
 valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224), batch_size=batch_size) # creating the generator for validation data
 
@@ -110,7 +112,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
 
 # training the original model
 # base_model = AlexNet(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
-base_model = AlexNet(input_shape=(224, 224, 3))
+base_model = load()
 X = base_model.layers[-2].output
 X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 base_model = models.Model(inputs=base_model.inputs, outputs=X)
@@ -139,7 +141,7 @@ log_df.to_csv(RESULTS_PATH)
 
 # tuning the model
 # base_model = AlexNet(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
-base_model = AlexNet(input_shape=(224, 224, 3))
+base_model = load()
 base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
