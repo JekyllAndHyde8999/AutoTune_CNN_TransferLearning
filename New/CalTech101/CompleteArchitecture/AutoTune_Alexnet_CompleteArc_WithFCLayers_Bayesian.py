@@ -12,6 +12,7 @@ from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks, initializers
 # from keras.applications import AlexNet
 # from alex import AlexNet
+from keras.preprocessing.image import ImageDataGenerator
 
 reverse_list = lambda l: list(reversed(l))
 load = lambda : models.load_model("/media/shabbeer/62c2fcfb-4a8a-47d2-88f8-fdd9a0d89adc/Research_PhD/alexnet_imagenet.h5")
