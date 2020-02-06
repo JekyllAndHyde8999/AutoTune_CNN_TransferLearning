@@ -83,8 +83,8 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
         elif architecture[i] == 'activation':
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
-
-    X = layers.Flatten()(X)
+        elif architecture[i] == 'flatten':
+            X = layers.Flatten()(X)
 
     # for units, dropout in zip(optim_neurons, optim_dropouts):
     #     X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
@@ -147,6 +147,7 @@ meaningless = [
     layers.BatchNormalization,
     layers.ZeroPadding2D,
     layers.Add,
+    layers.Flatten
 ]
 ## optimize conv layers
 
@@ -178,6 +179,8 @@ for i in range(1, len(base_model.layers) + 1):
         elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
             temp_acts.append(temp_model.layers[-j].activation)
+        elif type(temp_model.layers[-j]) == layers.Flatten:
+            temp_arc.append('flatten')
 
     print(f"temp_arc: {temp_arc}")
 
@@ -195,13 +198,22 @@ for i in range(1, len(base_model.layers) + 1):
                     {'name': 'conv_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
-        if temp_arc[iter_] == 'dense':
+        elif temp_arc[iter_] == 'dense':
             print("I am in dense")
             bounds.extend(
                 [
                     {'name': 'dense_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2 ** j for j in range(6, 11)]},
                     {'name': 'dense_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': np.arange(0, 1, step=0.1)},
                     {'name': 'dense_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                ]
+            )
+        elif temp_arc[iter_] == 'flatten':
+            print("I am in flatten")
+            bounds.extend(
+                [
+                    {'name': 'flatten_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
+                    {'name': 'flatten_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
+                    {'name': 'flatten_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
         elif temp_arc[iter_] == 'maxpool':
