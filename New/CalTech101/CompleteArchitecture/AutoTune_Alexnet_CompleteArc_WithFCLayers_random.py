@@ -93,9 +93,8 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
         elif architecture[i] == 'activation':
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
-
-    X = layers.Reshape((9216,))(X)
-    X = layers.Reshape((9216,))(X)
+        elif architecture[i] == 'reshape':
+            X = layers.Reshape((9216,))(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
@@ -138,6 +137,7 @@ meaningless = [
     # layers.MaxPooling2D,
     layers.ZeroPadding2D,
     layers.Add,
+    layers.Reshape
 ]
 ## optimize conv layers
 filter_size_space = [1, 3]
@@ -188,6 +188,8 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 temp_arc.append('dense')
                 curr_units.append(random.sample(units_space, 1)[0])
                 curr_dropouts.append(random.sample(dropouts_space, 1)[0])
+            elif type(temp_model.layers[-j]) == layers.Reshape:
+                temp_arc.append('reshape')
 
         print(f"temp_arc: {temp_arc}")
 

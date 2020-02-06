@@ -93,9 +93,8 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
         elif architecture[i] == 'activation':
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
-
-    X = layers.Reshape((9216,))(X)
-    X = layers.Reshape((9216,))(X)
+        elif architecture[i] == 'reshape':
+            X = layers.Reshape((9216,))(X)
 
     # for units, dropout in zip(optim_neurons, optim_dropouts):
     #     X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
@@ -160,6 +159,7 @@ meaningless = [
     layers.BatchNormalization,
     layers.ZeroPadding2D,
     layers.Add,
+    layers.Reshape
 ]
 ## optimize conv layers
 
@@ -191,6 +191,8 @@ for i in range(1, len(base_model.layers) + 1):
         elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
             temp_acts.append(temp_model.layers[-j].activation)
+        elif type(temp_model.layers[-j]) == layers.Reshape:
+            temp_arc.append('reshape')
 
     print(f"temp_arc: {temp_arc}")
 
