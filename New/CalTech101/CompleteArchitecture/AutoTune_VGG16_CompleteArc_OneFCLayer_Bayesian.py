@@ -90,7 +90,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
 
-    # X = layers.Flatten()(X)
+    X = layers.Flatten()(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
@@ -130,8 +130,8 @@ log_df.loc[log_df.shape[0], :] = log_tuple
 log_df.to_csv(RESULTS_PATH)
 
 # tuning the model
-base_model = VGG16(include_top=True, weights='imagenet', input_shape=(224, 224, 3))
-base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
+base_model = VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
+base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-1].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 # base_model.summary()

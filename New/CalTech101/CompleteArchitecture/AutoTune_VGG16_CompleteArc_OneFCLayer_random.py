@@ -119,8 +119,8 @@ history = to_train_model.fit_generator(
     validation_steps=len(valid_generator), callbacks=[reduce_LR]
 )
 
-base_model = VGG16(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
-base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
+base_model = VGG16(input_shape=(224, 224, 3), weights='imagenet', include_top=False)
+base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-1].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
