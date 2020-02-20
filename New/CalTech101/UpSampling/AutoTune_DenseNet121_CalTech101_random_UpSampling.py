@@ -151,6 +151,8 @@ for unfreeze in range(1, len(base_model.layers) + 1):
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
 
+    iter_accs = []
+
     for _ in range(20):
         temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
         print(f"Tuning last {unfreeze} layers.")
@@ -201,9 +203,15 @@ for unfreeze in range(1, len(base_model.layers) + 1):
 
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
+        iter_accs.append(temp_acc)
 
         log_tuple = (curr_acts, 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
-        best_acc = max(best_acc, temp_acc)
+    if best_acc > (sum(iter_accs) / len(iter_accs)):
+        print("Validation Accuracy did not improve.")
+        print(f"Breaking out at {i} layers.")
+        break
+
+    best_acc = max(best_acc, sum(iter_accs) / len(iter_accs))
