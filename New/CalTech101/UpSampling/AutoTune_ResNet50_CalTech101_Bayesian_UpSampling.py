@@ -163,7 +163,7 @@ for i in range(1, len(base_model.layers) + 1):
     temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
     print(f"Tuning last {unfreeze} layers.")
     time.sleep(3)
-
+    temp_arc = []
     temp_acts = []
     for j in range(1, unfreeze + 1):
         if type(temp_model.layers[-j]) == layers.Conv2D:
