@@ -10,7 +10,7 @@ import math
 from itertools import product, combinations
 from collections import OrderedDict
 from keras.preprocessing import image
-from keras import layers, models, optimizers, callbacks, initializers
+from keras import layers, models, optimizers, callbacks, initializers, activations
 # from keras.applications import AlexNet
 # from alex import AlexNet
 
@@ -74,11 +74,12 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             assert type(model.layers[global_index]) == layers.Conv2D
             num_filter = num_filters.pop(0)
             filter_size = filter_sizes.pop(0)
+            acts.pop(0)
             try:
-                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation='relu')(X)
+                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act)(X)
             except:
                 X = upsample(X.shape)(X)
-                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation='relu')(X)
+                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act)(X)
         elif architecture[i] == 'maxpool':
             assert type(model.layers[global_index]) == layers.MaxPooling2D
             pool_size = pool_sizes.pop(0)
@@ -97,7 +98,7 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             X = layers.Reshape((9216,))(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
-        X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
+        X = layers.Dense(units, kernel_initializer='he_normal', activation=acts.pop(0))(X)
         X = layers.BatchNormalization()(X)
         X = layers.Dropout(float(dropout))(X)
 
@@ -146,6 +147,13 @@ pool_size_space = [2, 3]
 units_space = [2 ** j for j in range(6, 11)]
 dropouts_space = np.arange(0, 1, step=0.1)
 pad_size_space = list(range(1, 5))
+acts_space = [
+    activations.relu,
+    activations.sigmoid,
+    activations.tanh,
+    activations.elu,
+    activations.selu
+]
 for unfreeze in range(1, len(base_model.layers) + 1):
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
@@ -168,6 +176,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 temp_arc.append('conv')
                 curr_filter_size.append(random.sample(filter_size_space, 1)[0])
                 curr_num_filters.append(random.sample(num_filter_space, 1)[0])
+                curr_acts.append(random.sample(acts_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.MaxPooling2D:
                 temp_arc.append('maxpool')
                 curr_pool_size.append(random.sample(pool_size_space, 1)[0])
@@ -176,7 +185,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.Activation:
                 temp_arc.append('activation')
-                curr_acts.append(temp_model.layers[-j].activation)
+                curr_acts.append(random.sample(acts_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.Add:
                 temp_arc.append('add')
             elif type(temp_model.layers[-j]) == layers.BatchNormalization:
@@ -206,7 +215,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
-        log_tuple = ('relu', 'he_normal', unfreeze, len(curr_units), curr_units, curr_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_tuple = (curr_acts, 'he_normal', unfreeze, len(curr_units), curr_units, curr_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 

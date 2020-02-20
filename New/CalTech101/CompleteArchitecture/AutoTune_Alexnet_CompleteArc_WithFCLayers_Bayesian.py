@@ -9,7 +9,7 @@ import math
 from itertools import product
 from collections import OrderedDict
 from keras.preprocessing import image
-from keras import layers, models, optimizers, callbacks, initializers
+from keras import layers, models, optimizers, callbacks, initializers, activations
 # from keras.applications import AlexNet
 # from alex import AlexNet
 from keras.preprocessing.image import ImageDataGenerator
@@ -44,6 +44,14 @@ reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc', factor=np.sqrt(0.01),
 # adagrad optimizer
 ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
 
+# activations
+act_map = [
+    activations.relu,
+    activations.sigmoid,
+    activations.tanh,
+    activations.elu,
+    activations.selu
+]
 
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
@@ -57,10 +65,13 @@ def upsample(shape, target_size=5):
     return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
 
 
-def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim_dropouts, acts):
+def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim_dropouts):
     # assert optim_neurons and optim_dropouts, "No optimum architecture for dense layers is provided."
     X = model.layers[index - 1].output
     print(type(model.layers[index - 1]))
+
+    dense_params = OrderedDict(filter(lambda x: x[0].startswith('dense'), conv_params.items()))
+    conv_params = OrderedDict(filter(lambda x: not x[0].startswith('dense'), conv_params.items()))
 
     for i in range(len(conv_params) // 3):
         global_index = index + i
@@ -77,10 +88,10 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
         if architecture[i] == 'conv':
             assert type(model.layers[global_index]) == layers.Conv2D
             try:
-                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), strides=(int(stride_size), int(stride_size)), kernel_initializer='he_normal', activation='relu')(X)
+                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act_map[int(stride_size)])(X)
             except:
                 X = upsample(X.shape)(X)
-                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), strides=(int(stride_size), int(stride_size)), kernel_initializer='he_normal', activation='relu')(X)
+                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act_map[int(stride_size)])(X)
         elif architecture[i] == 'maxpool':
             assert type(model.layers[global_index]) == layers.MaxPooling2D
             X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
@@ -92,7 +103,7 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
             X = layers.BatchNormalization()(X)
         elif architecture[i] == 'activation':
             assert type(model.layers[global_index]) == layers.Activation
-            X = layers.Activation(acts.pop(0))(X)
+            X = layers.Activation(act_map[int(stride_size)])(X)
         elif architecture[i] == 'reshape':
             X = layers.Reshape((9216,))(X)
 
@@ -100,11 +111,11 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
     #     X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
     #     X = layers.BatchNormalization()(X)
     #     X = layers.Dropout(dropout)(X)
-    dense_params = OrderedDict(filter(lambda x: x[0].startswith('dense'), conv_params.items()))
     for i in range(len(dense_params) // 3):
         units = int(dense_params['dense_filter_size_' + str(i + 1)])
         dropout = float(dense_params['dense_num_filters_' + str(i + 1)])
-        X = layers.Dense(units, activation='relu')(X)
+        act = int(dense_params['dense_stride_size_' + str(i + 1)])
+        X = layers.Dense(units, activation=act_map[act])(X)
         X = layers.BatchNormalization()(X)
         X = layers.Dropout(dropout)(X)
 
@@ -172,7 +183,6 @@ for i in range(1, len(base_model.layers) + 1):
     time.sleep(3)
 
     temp_arc = []
-    temp_acts = []
     for j in range(1, unfreeze + 1):
         if type(temp_model.layers[-j]) == layers.Conv2D:
             temp_arc.append('conv')
@@ -190,7 +200,6 @@ for i in range(1, len(base_model.layers) + 1):
             temp_arc.append('dense')
         elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
-            temp_acts.append(temp_model.layers[-j].activation)
         elif type(temp_model.layers[-j]) == layers.Reshape:
             temp_arc.append('reshape')
 
@@ -207,7 +216,7 @@ for i in range(1, len(base_model.layers) + 1):
                 [
                     {'name': 'conv_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3, 5]},
                     {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [64, 128, 256, 512]},
-                    {'name': 'conv_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                    {'name': 'conv_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': list(range(len(act_map)))}
                 ]
             )
         if temp_arc[iter_] == 'dense':
@@ -216,7 +225,7 @@ for i in range(1, len(base_model.layers) + 1):
                 [
                     {'name': 'dense_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2 ** j for j in range(6, 11)]},
                     {'name': 'dense_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': np.arange(0, 1, step=0.1)},
-                    {'name': 'dense_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                    {'name': 'dense_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': list(range(len(act_map)))}
                 ]
             )
         elif temp_arc[iter_] == 'maxpool':
@@ -241,7 +250,7 @@ for i in range(1, len(base_model.layers) + 1):
             print("I am in activation")
             bounds.extend(
                 [
-                    {'name': 'activation_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
+                    {'name': 'activation_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': list(range(len(act_map)))},
                     {'name': 'activation_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': 'activation_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
@@ -264,6 +273,7 @@ for i in range(1, len(base_model.layers) + 1):
         filter_sizes = []
         num_filters = []
         stride_sizes = []
+        acts = []
 
         print(x)
         conv_params = OrderedDict()
@@ -279,11 +289,11 @@ for i in range(1, len(base_model.layers) + 1):
                 num_filters.append(int(x[:, j]))
             j += 1
             conv_params[temp_arc[j // 3] + '_stride_size_' + str((j // 3) + 1)] = x[:, j]
-            if temp_arc[j // 3] == 'conv':
-                stride_sizes.append(int(x[:, j]))
+            if temp_arc[j // 3] == 'conv' or temp_arc[j // 3] == 'dense':
+                acts.append(act_map[int(x[:, j])])
             j += 1
 
-        to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts, reverse_list(temp_acts))
+        to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         # to_train_model.summary()
         history = to_train_model.fit_generator(
@@ -300,7 +310,7 @@ for i in range(1, len(base_model.layers) + 1):
         val_loss = history.history['val_loss'][best_acc_index]
         val_acc = history.history['val_acc'][best_acc_index]
 
-        log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons) + 1, optim_neurons, optim_dropouts, filter_sizes, num_filters, stride_sizes, train_loss, train_acc, val_loss, val_acc)
+        log_tuple = (acts, 'he_normal', unfreeze, len(optim_neurons) + 1, optim_neurons, optim_dropouts, filter_sizes, num_filters, stride_sizes, train_loss, train_acc, val_loss, val_acc)
         # try:
         #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
         #     log_df.loc[row_index] = log_tuple
