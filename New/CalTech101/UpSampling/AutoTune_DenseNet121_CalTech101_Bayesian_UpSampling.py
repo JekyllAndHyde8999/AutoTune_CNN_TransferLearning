@@ -167,7 +167,6 @@ for i in range(1, len(base_model.layers) + 1):
     time.sleep(3)
 
     temp_arc = []
-    temp_acts = []
     for j in range(1, unfreeze + 1):
         if type(temp_model.layers[-j]) == layers.Conv2D:
             temp_arc.append('conv')
@@ -183,7 +182,6 @@ for i in range(1, len(base_model.layers) + 1):
             temp_arc.append('zeropad')
         elif type(temp_model.layers[-j]) == layers.Activation:
             temp_arc.append('activation')
-            temp_acts.append(temp_model.layers[-j].activation)
         elif type(temp_model.layers[-j]) == layers.Concatenate:
             temp_arc.append('concat')
 
@@ -267,7 +265,7 @@ for i in range(1, len(base_model.layers) + 1):
                 stride_sizes.append(int(x[:, j]))
             j += 1
 
-        to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts, reverse_list(temp_acts))
+        to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         # to_train_model.summary()
         history = to_train_model.fit_generator(
