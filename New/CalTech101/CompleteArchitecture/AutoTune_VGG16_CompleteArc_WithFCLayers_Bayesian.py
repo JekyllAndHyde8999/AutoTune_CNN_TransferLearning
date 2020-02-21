@@ -46,10 +46,10 @@ act_map = [
 ]
 
 weight_map = [
-    'he_normal'
-    'lecun_normal'
-    'glorot_normal'
-    'glorot_uniform'
+    'he_normal',
+    'lecun_normal',
+    'glorot_normal',
+    'glorot_uniform',
     'lecun_uniform'
 ]
 
