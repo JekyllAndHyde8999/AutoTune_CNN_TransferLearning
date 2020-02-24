@@ -284,6 +284,7 @@ for i in range(1, len(base_model.layers) + 1):
             conv_params[temp_arc[j // NUM_HYPERPARAMS] + '_weight_init_' + str((j // NUM_HYPERPARAMS) + 1)] = x[:, j]
             if temp_arc[j // NUM_HYPERPARAMS] == 'conv' or temp_arc[j // NUM_HYPERPARAMS] == 'dense':
                 weight_inits.append(weight_map[int(x[:, j])])
+            j += 1
 
         to_train_model = get_model_conv(temp_model, -len(conv_params) // NUM_HYPERPARAMS, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
