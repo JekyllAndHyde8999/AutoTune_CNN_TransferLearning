@@ -170,6 +170,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         curr_pool_size = []
         curr_acts = []
         curr_units = []
+        curr_dropouts = []
         curr_pad = []
         curr_weights = []
         temp_arc = []

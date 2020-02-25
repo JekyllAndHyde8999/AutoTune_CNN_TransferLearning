@@ -135,7 +135,7 @@ filter_size_space = [1, 3]
 num_filter_space = [32, 64, 128, 256]
 pool_size_space = [2, 3]
 units_space = [2 ** j for j in range(6, 11)]
-dropouts_space = np.arange(0, 1, step=0.1)
+dropouts_space = np.arange(0, 1, step=0.1).tolist()
 pad_size_space = list(range(1, 5))
 acts_space = [
     activations.relu,
