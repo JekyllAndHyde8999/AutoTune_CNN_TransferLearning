@@ -27,7 +27,7 @@ TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
 EPOCHS = 50
-RESULTS_PATH = os.path.join("AutoConv_VGG16_new", "AutoFCL_AutoConv_VGG16_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
+RESULTS_PATH = os.path.join("AutoConv_VGG16_new1", "AutoConv_VGG16_randomsearch_log_" + DATA_FOLDER.split('/')[-1] + "_autoconv_v10.csv") # The path to the results file
 
 # Creating generators from training and validation data
 batch_size=8 # the mini-batch size to use for the dataset
@@ -199,7 +199,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
 
         print(f"temp_arc: {temp_arc}")
 
-        to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), reverse_list(curr_weights) optim_neurons, optim_dropouts)
+        to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), reverse_list(curr_weights), optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         # to_train_model.summary()
         history = to_train_model.fit_generator(
