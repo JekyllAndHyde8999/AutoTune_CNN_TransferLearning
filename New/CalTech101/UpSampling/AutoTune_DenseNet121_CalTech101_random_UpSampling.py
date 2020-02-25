@@ -13,13 +13,14 @@ import GPyOpt
 import keras
 import random
 import math
+from copy import deepcopy
 from itertools import product, combinations
 from collections import OrderedDict
 from keras.preprocessing import image
 from keras import layers, models, optimizers, callbacks, initializers, activations
 from keras.applications import DenseNet121
 
-reverse_list = lambda l: list(reversed(l))
+reverse_list = lambda l: deepcopy(list(reversed(l)))
 
 DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
 # DATA_FOLDER = "CalTech101"
