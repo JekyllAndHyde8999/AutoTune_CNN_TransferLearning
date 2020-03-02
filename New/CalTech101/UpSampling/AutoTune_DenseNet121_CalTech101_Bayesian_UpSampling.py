@@ -51,13 +51,13 @@ act_map = [
     activations.selu
 ]
 
-weight_map = [
-    'he_normal',
-    'lecun_normal',
-    'glorot_normal',
-    'glorot_uniform',
-    'lecun_uniform'
-]
+# weight_map = [
+#     'he_normal',
+#     'lecun_normal',
+#     'glorot_normal',
+#     'glorot_uniform',
+#     'lecun_uniform'
+# ]
 
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
@@ -85,16 +85,16 @@ def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim
         params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[i]) and x[0].split('_')[-1] == str(-global_index), conv_params.items()))
         print(f'Params: {params_dicts}')
         print([x[0] for x in params_dicts.items()])
-        filter_size, num_filters, stride_size, w_init = [x for x in params_dicts.values()]
-        print(f'{architecture[i]} layer: {filter_size}, {num_filters}, {stride_size}, {weight_map[int(w_init)]}')
+        filter_size, num_filters, stride_size = [x for x in params_dicts.values()]
+        print(f'{architecture[i]} layer: {filter_size}, {num_filters}, {stride_size}')
 
         if architecture[i] == 'conv':
             assert type(model.layers[global_index]) == layers.Conv2D
             try:
-                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer=weight_map[int(w_init)], activation=act_map[int(stride_size)])(X)
+                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act_map[int(stride_size)])(X)
             except:
                 X = upsample(X.shape)(X)
-                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer=weight_map[int(w_init)], activation=act_map[int(stride_size)])(X)
+                X = layers.Conv2D(filters=int(num_filters), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act_map[int(stride_size)])(X)
         elif architecture[i] == 'maxpool':
             assert type(model.layers[global_index]) == layers.MaxPooling2D
             X = layers.MaxPooling2D(pool_size=int(filter_size))(X)
@@ -209,7 +209,7 @@ for i in range(1, len(base_model.layers) + 1):
                     {'name': 'conv_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3, 5]},
                     {'name': 'conv_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [64, 128, 256, 512]},
                     {'name': 'conv_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': list(range(len(act_map)))},
-                    {'name': 'conv_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': list(range(len(weight_map)))}
+                    # {'name': 'conv_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': list(range(len(weight_map)))}
                 ]
             )
         elif temp_arc[iter_] == 'maxpool':
@@ -219,7 +219,7 @@ for i in range(1, len(base_model.layers) + 1):
                     {'name': 'maxpool_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3]},
                     {'name': 'maxpool_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': 'maxpool_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
-                    {'name': 'maxpool_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                    # {'name': 'maxpool_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
         elif temp_arc[iter_] == 'globalavgpool':
@@ -229,7 +229,7 @@ for i in range(1, len(base_model.layers) + 1):
                     {'name': 'avgpool_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': 'avgpool_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': 'avgpool_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
-                    {'name': 'avgpool_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                    # {'name': 'avgpool_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
         elif type(temp_arc[iter_]) == tuple:
@@ -239,7 +239,7 @@ for i in range(1, len(base_model.layers) + 1):
                     {'name': 'activation_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': list(range(len(act_map)))},
                     {'name': 'activation_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': 'activation_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
-                    {'name': 'activation_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                    # {'name': 'activation_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
         else:
@@ -249,7 +249,7 @@ for i in range(1, len(base_model.layers) + 1):
                     {'name': temp_arc[iter_] + '_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': temp_arc[iter_] + '_num_filters_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
                     {'name': temp_arc[iter_] + '_stride_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
-                    {'name': temp_arc[iter_] + '_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
+                    # {'name': temp_arc[iter_] + '_weight_init_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]}
                 ]
             )
 
@@ -262,7 +262,7 @@ for i in range(1, len(base_model.layers) + 1):
         num_filters = []
         stride_sizes = []
         acts = []
-        weight_inits = []
+        # weight_inits = []
 
         print(x)
         conv_params = OrderedDict()
@@ -282,9 +282,9 @@ for i in range(1, len(base_model.layers) + 1):
                 acts.append(act_map[int(x[:, j])])
             j += 1
             conv_params[temp_arc[j // NUM_HYPERPARAMS] + '_weight_init_' + str((j // NUM_HYPERPARAMS) + 1)] = x[:, j]
-            if temp_arc[j // NUM_HYPERPARAMS] == 'conv' or temp_arc[j // NUM_HYPERPARAMS] == 'dense':
-                weight_inits.append(weight_map[int(x[:, j])])
-            j += 1
+            # if temp_arc[j // NUM_HYPERPARAMS] == 'conv' or temp_arc[j // NUM_HYPERPARAMS] == 'dense':
+            #     weight_inits.append(weight_map[int(x[:, j])])
+            # j += 1
 
         to_train_model = get_model_conv(temp_model, -len(conv_params) // NUM_HYPERPARAMS, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -303,7 +303,7 @@ for i in range(1, len(base_model.layers) + 1):
         val_loss = history.history['val_loss'][best_acc_index]
         val_acc = history.history['val_acc'][best_acc_index]
 
-        log_tuple = (acts, weight_inits, unfreeze, len(optim_neurons) + 1, optim_neurons, optim_dropouts, filter_sizes, num_filters, stride_sizes, train_loss, train_acc, val_loss, val_acc)
+        log_tuple = (acts, 'he_normal', unfreeze, len(optim_neurons) + 1, optim_neurons, optim_dropouts, filter_sizes, num_filters, stride_sizes, train_loss, train_acc, val_loss, val_acc)
         # try:
         #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
         #     log_df.loc[row_index] = log_tuple

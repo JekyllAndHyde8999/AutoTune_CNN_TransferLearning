@@ -55,7 +55,7 @@ def upsample(shape, target_size=5):
     return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
 
 
-def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_sizes, acts, zero_pads, weight_inits, optim_neurons, optim_dropouts):
+def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_sizes, acts, zero_pads, optim_neurons, optim_dropouts):
     # assert optim_neurons and optim_dropouts, "No optimum architecture for dense layers is provided."
     X = model.layers[index - 1].output
     print(type(model.layers[index - 1]))
@@ -73,12 +73,12 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             num_filter = num_filters.pop(0)
             filter_size = filter_sizes.pop(0)
             act = acts.pop(0)
-            w_init = weight_inits.pop(0)
+            # w_init = weight_inits.pop(0)
             try:
-                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer=w_init, activation=act)(X)
+                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act)(X)
             except:
                 X = upsample(X.shape)(X)
-                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer=w_init, activation=act)(X)
+                X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act)(X)
         elif architecture[i] == 'maxpool':
             assert type(model.layers[global_index]) == layers.MaxPooling2D
             pool_size = pool_sizes.pop(0)
@@ -149,13 +149,13 @@ acts_space = [
     activations.elu,
     activations.selu
 ]
-weight_space = [
-    'he_normal',
-    'lecun_normal',
-    'glorot_normal',
-    'glorot_uniform',
-    'lecun_uniform',
-]
+# weight_space = [
+#     'he_normal',
+#     'lecun_normal',
+#     'glorot_normal',
+#     'glorot_uniform',
+#     'lecun_uniform',
+# ]
 for unfreeze in range(1, len(base_model.layers) + 1):
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
@@ -172,7 +172,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         curr_pool_size = []
         curr_acts = []
         curr_pad = []
-        curr_weights = []
+        # curr_weights = []
         temp_arc = []
         for j in range(1, unfreeze + 1):
             if type(temp_model.layers[-j]) == layers.Conv2D:
@@ -180,7 +180,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 curr_filter_size.append(random.sample(filter_size_space, 1)[0])
                 curr_num_filters.append(random.sample(num_filter_space, 1)[0])
                 curr_acts.append(random.sample(acts_space, 1)[0])
-                curr_weights.append(random.sample(weight_space, 1)[0])
+                # curr_weights.append(random.sample(weight_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.MaxPooling2D:
                 temp_arc.append('maxpool')
                 curr_pool_size.append(random.sample(pool_size_space, 1)[0])
@@ -202,7 +202,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
 
         print(f"temp_arc: {temp_arc}")
 
-        to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), reverse_list(curr_weights), optim_neurons, optim_dropouts)
+        to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         # to_train_model.summary()
         history = to_train_model.fit_generator(
@@ -216,7 +216,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         temp_acc = history.history['val_acc'][best_acc_index]
         iter_accs.append(temp_acc)
 
-        log_tuple = (reverse_list(curr_acts), reverse_list(curr_weights), unfreeze, len(optim_neurons), reverse_list(optim_neurons), reverse_list(optim_dropouts), reverse_list(curr_filter_size), reverse_list(curr_num_filters), [1] * len(curr_num_filters), reverse_list(curr_pool_size), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_tuple = (reverse_list(curr_acts), 'he_normal', unfreeze, len(optim_neurons), reverse_list(optim_neurons), reverse_list(optim_dropouts), reverse_list(curr_filter_size), reverse_list(curr_num_filters), [1] * len(curr_num_filters), reverse_list(curr_pool_size), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
