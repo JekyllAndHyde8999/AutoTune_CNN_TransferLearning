@@ -41,7 +41,7 @@ reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc', factor=np.sqrt(0.01),
 # adagrad optimizer
 ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
 
-NUM_HYPERPARAMS = 4
+NUM_HYPERPARAMS = 3
 
 act_map = [
     activations.relu,
