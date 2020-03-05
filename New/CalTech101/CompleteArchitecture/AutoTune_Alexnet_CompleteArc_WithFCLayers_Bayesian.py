@@ -310,6 +310,7 @@ for i in range(1, len(base_model.layers) + 1):
             if temp_arc[j // NUM_HYPERPARAMS] == 'conv' or temp_arc[j // NUM_HYPERPARAMS] == 'dense':
                 acts.append(act_map[int(x[:, j])])
             j += 1
+            # conv_params[temp_arc[j // NUM_HYPERPARAMS] + '_weight_init_' + str((j // NUM_HYPERPARAMS) + 1)] = x[:, j]
             # if temp_arc[j // NUM_HYPERPARAMS] == 'conv' or temp_arc[j // NUM_HYPERPARAMS] == 'dense':
             #     weight_inits.append(weight_map[int(x[:, j])])
             # j += 1
