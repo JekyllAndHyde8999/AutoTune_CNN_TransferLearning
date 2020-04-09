@@ -45,7 +45,7 @@ ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
 except FileNotFoundError:
-    log_df = pd.DataFrame(columns=['index', 'activation', 'weight_initializer', 'num_layers_tuned', 'num_fc_layers', 'num_neurons', 'dropouts', 'filter_sizes', 'num_filters', 'stride_sizes', 'pool_sizes', 'train_loss', 'train_acc', 'val_loss', 'val_acc'])
+    log_df = pd.DataFrame(columns=['index', 'activation', 'weight_initializer', 'num_layers_tuned', 'num_fc_layers', 'num_neurons', 'dropouts', 'filter_sizes', 'num_filters', 'stride_sizes', 'pool_sizes', 'train_loss', 'train_acc', 'val_loss', 'val_acc', 'time_taken (s)'])
     log_df = log_df.set_index('index')
 
 
@@ -133,16 +133,18 @@ for i in range(len(base_model.layers)-1):
 
 base_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
 # base_model.summary()
+out_start = time.time()
 history = base_model.fit_generator(
     train_generator,
     validation_data=valid_generator, epochs=EPOCHS,
     steps_per_epoch=len(train_generator) / batch_size,
     validation_steps=len(valid_generator), callbacks=[reduce_LR]
 )
+out_end = time.time()
 
 best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
 assert history.history['val_acc'][best_acc_index] == max(history.history['val_acc'])
-log_tuple = ('relu', 'he_normal', 0, 1, [], [], [], [], [], history.history['loss'][best_acc_index],  history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+log_tuple = ('relu', 'he_normal', 0, 1, [], [], [], [], [], history.history['loss'][best_acc_index],  history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index], out_end - out_start)
 
 # try:
 #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
@@ -177,17 +179,19 @@ for num_dense in fc_layer_range:
         to_train_model = get_model_dense(base_model, [curr_units, curr_dropouts])
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         # to_train_model.summary()
+        in_start = time.time()
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=EPOCHS,
             steps_per_epoch=len(train_generator) / batch_size,
             validation_steps=len(valid_generator), callbacks=[reduce_LR]
         )
+        in_end = time.time()
 
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
-        log_tuple = ('relu', 'he_normal', None, num_dense, curr_units, curr_dropouts, None, None, None, None, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_tuple = ('relu', 'he_normal', None, num_dense, curr_units, curr_dropouts, None, None, None, None, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index], in_end - in_start)
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
@@ -253,17 +257,19 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
         # to_train_model.summary()
+        in_start = time.time()
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=EPOCHS,
             steps_per_epoch=len(train_generator) / batch_size,
             validation_steps=len(valid_generator), callbacks=[reduce_LR]
         )
+        in_end = time.time()
 
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
-        log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
+        log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index], in_end - in_start)
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
