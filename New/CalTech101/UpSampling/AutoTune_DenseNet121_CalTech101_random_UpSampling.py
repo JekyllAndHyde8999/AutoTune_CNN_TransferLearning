@@ -22,8 +22,7 @@ from keras.applications import DenseNet121
 
 reverse_list = lambda l: deepcopy(list(reversed(l)))
 
-DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
-# DATA_FOLDER = "CalTech101"
+DATA_FOLDER = "CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
@@ -39,10 +38,7 @@ valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224)
 # creating callbacks for the model
 reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc', factor=np.sqrt(0.01), cooldown=0, patience=5, min_lr=0.5e-10)
 
-# adagrad optimizer
-ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
-
-
+# Creating a CSV file if one does not exist
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
 except FileNotFoundError:
@@ -50,30 +46,26 @@ except FileNotFoundError:
     log_df = log_df.set_index('index')
 
 
+# utility function
 def upsample(shape, target_size=5):
     upsampling_factor = math.ceil(target_size / shape[1].value)
     return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
 
 
+# function to modify architecture for current hyperparams
 def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_sizes, acts, zero_pads, optim_neurons, optim_dropouts):
-    # assert optim_neurons and optim_dropouts, "No optimum architecture for dense layers is provided."
     X = model.layers[index - 1].output
-    print(type(model.layers[index - 1]))
 
-    # for i in range(len(conv_params) // 3):
     for i in range(len(architecture)):
         global_index = index + i
         if architecture[i] == 'concat':
             continue
-        print(f"global_index: {global_index}")
-        print(f"Layer: {architecture[i]}")
 
         if architecture[i] == 'conv':
             assert type(model.layers[global_index]) == layers.Conv2D
             num_filter = num_filters.pop(0)
             filter_size = filter_sizes.pop(0)
             act = acts.pop(0)
-            # w_init = weight_inits.pop(0)
             try:
                 X = layers.Conv2D(filters=int(num_filter), kernel_size=(int(filter_size), int(filter_size)), kernel_initializer='he_normal', activation=act)(X)
             except:
@@ -85,7 +77,6 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
             X = layers.MaxPooling2D(pool_size=int(pool_size))(X)
         elif architecture[i] == 'globalavgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
-            # pool_size = pool_sizes.pop(0)
             X = layers.GlobalAveragePooling2D()(X)
         elif architecture[i] == 'batch':
             assert type(model.layers[global_index]) == layers.BatchNormalization
@@ -93,8 +84,6 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
         elif architecture[i] == 'activation':
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
-
-    # X = layers.Flatten()(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
@@ -109,12 +98,12 @@ base_model = DenseNet121(input_shape=(224, 224, 3), weights='imagenet', include_
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
-## training original model
+# training original model
 X = base_model.layers[-2].output
 X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 to_train_model = models.Model(inputs=base_model.inputs, outputs=X)
 to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-# to_train_model.summary()
+
 history = to_train_model.fit_generator(
     train_generator,
     validation_data=valid_generator, epochs=EPOCHS,
@@ -122,22 +111,24 @@ history = to_train_model.fit_generator(
     validation_steps=len(valid_generator), callbacks=[reduce_LR]
 )
 
+# freezing the layers of the model
 base_model = DenseNet121(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
 base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
 
+## optimize conv layers
 best_acc = 0
 optim_neurons, optim_dropouts = [], []
+# list of layers not considered in optimization
 meaningless = [
     layers.Activation,
     layers.GlobalAveragePooling2D,
-    # layers.MaxPooling2D,
     layers.ZeroPadding2D,
     layers.Add,
 ]
-## optimize conv layers
+# search spaces for each kind of hyperparam
 filter_size_space = [2, 3, 5]
 num_filter_space = [64, 128, 256, 512]
 pool_size_space = [2, 3]
@@ -149,14 +140,9 @@ acts_space = [
     activations.elu,
     activations.selu
 ]
-# weight_space = [
-#     'he_normal',
-#     'lecun_normal',
-#     'glorot_normal',
-#     'glorot_uniform',
-#     'lecun_uniform',
-# ]
+
 for unfreeze in range(1, len(base_model.layers) + 1):
+    print(f"Tuning last {unfreeze} layers.")
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
 
@@ -164,7 +150,6 @@ for unfreeze in range(1, len(base_model.layers) + 1):
 
     for _ in range(20):
         temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
-        print(f"Tuning last {unfreeze} layers.")
         time.sleep(3)
 
         curr_filter_size = []
@@ -172,7 +157,8 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         curr_pool_size = []
         curr_acts = []
         curr_pad = []
-        # curr_weights = []
+
+        # saving the architecture
         temp_arc = []
         for j in range(1, unfreeze + 1):
             if type(temp_model.layers[-j]) == layers.Conv2D:
@@ -180,13 +166,11 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 curr_filter_size.append(random.sample(filter_size_space, 1)[0])
                 curr_num_filters.append(random.sample(num_filter_space, 1)[0])
                 curr_acts.append(random.sample(acts_space, 1)[0])
-                # curr_weights.append(random.sample(weight_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.MaxPooling2D:
                 temp_arc.append('maxpool')
                 curr_pool_size.append(random.sample(pool_size_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.GlobalAveragePooling2D:
                 temp_arc.append('globalavgpool')
-                # curr_pool_size.append(random.sample(pool_size_space, 1)[0])
             elif type(temp_model.layers[-j]) == layers.Activation:
                 temp_arc.append('activation')
                 curr_acts.append(random.sample(acts_space, 1)[0])
@@ -200,11 +184,10 @@ for unfreeze in range(1, len(base_model.layers) + 1):
             elif type(temp_model.layers[-j]) == layers.Concatenate:
                 temp_arc.append('concat')
 
-        print(f"temp_arc: {temp_arc}")
-
         to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        # to_train_model.summary()
+
+        # train the modified model
         history = to_train_model.fit_generator(
             train_generator,
             validation_data=valid_generator, epochs=EPOCHS,
@@ -216,6 +199,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         temp_acc = history.history['val_acc'][best_acc_index]
         iter_accs.append(temp_acc)
 
+        # log the model
         log_tuple = (reverse_list(curr_acts), 'he_normal', unfreeze, len(optim_neurons), reverse_list(optim_neurons), reverse_list(optim_dropouts), reverse_list(curr_filter_size), reverse_list(curr_num_filters), [1] * len(curr_num_filters), reverse_list(curr_pool_size), history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index])
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)

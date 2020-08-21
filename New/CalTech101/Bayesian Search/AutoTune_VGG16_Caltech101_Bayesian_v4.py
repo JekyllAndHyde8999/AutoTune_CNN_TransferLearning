@@ -18,8 +18,7 @@ from keras.applications import VGG16
 
 reverse_list = lambda l: list(reversed(l))
 
-DATA_FOLDER = "/home/shabbeer/Sravan/CalTech101"
-# DATA_FOLDER = "CalTech101"
+DATA_FOLDER = "CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
@@ -35,10 +34,7 @@ valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224)
 # creating callbacks for the model
 reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc', factor=np.sqrt(0.01), cooldown=0, patience=5, min_lr=0.5e-10)
 
-# adagrad optimizer
-ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
-
-
+# Creating a CSV file if one does not exist
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
 except FileNotFoundError:
@@ -46,18 +42,19 @@ except FileNotFoundError:
     log_df = log_df.set_index('index')
 
 
+# utility function
 def upsample(shape, target_size=5):
     upsampling_factor = math.ceil(target_size / shape[1].value)
     return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
 
 
+# function to modify architecture for current hyperparams for fully connected layers
 def get_model_dense(model, dense_params):
     X = model.layers[-1].output
     X = layers.Flatten()(X)
 
     for j in range(len(dense_params) // 2):
         params_dicts = OrderedDict(filter(lambda x: x[0].split('_')[-1] == str(j + 1), dense_params.items()))
-        print(params_dicts)
         units, dropout = params_dicts.values()
         X = layers.Dense(int(units), activation='relu', kernel_initializer='he_normal')(X)
         X = layers.BatchNormalization()(X)
@@ -67,22 +64,18 @@ def get_model_dense(model, dense_params):
     return models.Model(inputs=model.inputs, outputs=X)
 
 
+# function to modify architecture for current hyperparams for fully connected layers
 def get_model_conv(model, index, architecture, conv_params, optim_neurons, optim_dropouts, acts):
     assert optim_neurons and optim_dropouts, "No optimum architecture for dense layers is provided."
     X = model.layers[index - 1].output
-    print(type(model.layers[index - 1]))
 
     for i in range(len(conv_params) // 3):
         global_index = index + i
         if architecture[i] == 'add':
             continue
-        print(f"global_index: {global_index}")
-        print(f"Layer: {architecture[i]}")
+
         params_dicts = OrderedDict(filter(lambda x: x[0].startswith(architecture[i]) and x[0].split('_')[-1] == str(-global_index), conv_params.items()))
-        print(f'Params: {params_dicts}')
-        print([x[0] for x in params_dicts.items()])
         filter_size, num_filters, stride_size = [x for x in params_dicts.values()]
-        print(f'{architecture[i]} layer: {filter_size}, {num_filters}, {stride_size}')
 
         if architecture[i] == 'conv':
             assert type(model.layers[global_index]) == layers.Conv2D
@@ -128,7 +121,7 @@ for i in range(len(base_model.layers)-1):
     base_model.layers[i].trainable = False
 
 base_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-# base_model.summary()
+
 out_start = time.time()
 history = base_model.fit_generator(
     train_generator,
@@ -138,22 +131,18 @@ history = base_model.fit_generator(
 )
 out_end = time.time()
 
+# log the resuts of training
 best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
 assert history.history['val_acc'][best_acc_index] == max(history.history['val_acc'])
 log_tuple = ('relu', 'he_normal', 0, 1, [], [], [], [], [], history.history['loss'][best_acc_index],  history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index], out_end - out_start)
-
-# try:
-#     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
-#     log_df.loc[row_index] = log_tuple
-# except:
 log_df.loc[log_df.shape[0], :] = log_tuple
 log_df.to_csv(RESULTS_PATH)
 
-# tuning the model
+# freezing the layers of the model
 base_model = VGG16(include_top=False, weights='imagenet', input_shape=(224, 224, 3))
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
-# base_model.summary()
+
 
 ## optimize dense layers
 best_acc = 0
@@ -161,9 +150,9 @@ fc_layer_range = range(1, 3)
 dense_opt_s = []
 for num_dense in fc_layer_range:
     temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
-    print(f"num_dense: {num_dense}")
     time.sleep(3)
 
+    # making bounds list
     bounds = []
     for j in range(num_dense):
         bounds.append({'name': 'units_' + str(j + 1), 'type': 'discrete', 'domain': [2 ** k for k in range(6, 11)]})
@@ -171,12 +160,14 @@ for num_dense in fc_layer_range:
 
     history = None
     def model_fit_dense(x):
+        """
+        Callback function for GPyOpt optimizer
+        """
         global history
 
         num_neurons = []
         dropouts = []
 
-        print(x)
         dense_params = OrderedDict()
 
         j = 0
@@ -190,7 +181,8 @@ for num_dense in fc_layer_range:
 
         to_train_model = get_model_dense(temp_model, dense_params)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        # to_train_model.summary()
+
+        # train the modified model
         in_start = time.time()
         history = to_train_model.fit_generator(
             train_generator,
@@ -207,17 +199,15 @@ for num_dense in fc_layer_range:
         val_loss = history.history['val_loss'][best_acc_index]
         val_acc = history.history['val_acc'][best_acc_index]
 
+        # log the training results
         log_tuple = ('relu', 'he_normal', 0, num_dense + 1, num_neurons, dropouts, [], [], [], train_loss, train_acc, val_loss, val_acc, in_end - in_start)
-        # try:
-        #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
-        #     log_df.loc[row_index] = log_tuple
-        # except:
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
         return min(history.history['val_loss'])
 
 
+    # initialize GPyOpt optimizer
     opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit_dense, domain=bounds)
     opt_.run_optimization(max_iter=20)
     dense_opt_s.append(opt_)
@@ -226,10 +216,6 @@ for num_dense in fc_layer_range:
     assert history.history['val_acc'][best_acc_index] == max(history.history['val_acc'])
     temp_acc = history.history['val_acc'][best_acc_index]
 
-    # if temp_acc < best_acc:
-    #     print("Validation Accuracy did not improve")
-    #     print(f"Breaking out at {num_dense} layers")
-    #     break
     best_acc = max(temp_acc, best_acc)
 
     print("Optimized Parameters:")
@@ -237,9 +223,10 @@ for num_dense in fc_layer_range:
         print(f"\t{bounds[k]['name']}: {opt_.x_opt[k]}")
     print(f"Optimized Function value: {opt_.fx_opt}")
 
-    print(f"Finshed iteration with num_dense: {num_dense}")
     time.sleep(3)
 
+
+## optimize conv layers
 optim_neurons = []
 optim_dropouts = []
 req_opt_ = min(dense_opt_s, key=lambda x: x.fx_opt)
@@ -251,14 +238,13 @@ while k < len(req_opt_.x_opt):
     k += 1
 
 best_acc = 0
+# list of layers not considered in optimization
 meaningless = [
     layers.Activation,
     layers.GlobalAveragePooling2D,
-    # layers.MaxPooling2D,
     layers.ZeroPadding2D,
     layers.Add,
 ]
-## optimize conv layers
 
 for i in range(1, len(base_model.layers) + 1):
     unfreeze = i
@@ -268,6 +254,7 @@ for i in range(1, len(base_model.layers) + 1):
     print(f"Tuning last {unfreeze} layers.")
     time.sleep(3)
 
+    # saving the architecture
     temp_arc = []
     temp_acts = []
     for j in range(1, unfreeze + 1):
@@ -287,15 +274,11 @@ for i in range(1, len(base_model.layers) + 1):
             temp_arc.append('activation')
             temp_acts.append(temp_model.layers[-j].activation)
 
-    print(f"temp_arc: {temp_arc}")
 
-    # making bounds list
+    # defining the search space
     bounds = []
     for iter_ in range(len(temp_arc)):
-        print(iter_, temp_arc[iter_])
-
         if temp_arc[iter_] == 'conv':
-            print("I am in conv")
             bounds.extend(
                 [
                     {'name': 'conv_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3, 5]},
@@ -304,7 +287,6 @@ for i in range(1, len(base_model.layers) + 1):
                 ]
             )
         elif temp_arc[iter_] == 'maxpool':
-            print("I am in maxpool")
             bounds.extend(
                 [
                     {'name': 'maxpool_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3]},
@@ -313,7 +295,6 @@ for i in range(1, len(base_model.layers) + 1):
                 ]
             )
         elif temp_arc[iter_] == 'globalavgpool':
-            print("I am in globalavgpool")
             bounds.extend(
                 [
                     {'name': 'avgpool_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [2, 3]},
@@ -322,7 +303,6 @@ for i in range(1, len(base_model.layers) + 1):
                 ]
             )
         elif type(temp_arc[iter_]) == tuple:
-            print("I am in activation")
             bounds.extend(
                 [
                     {'name': 'activation_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
@@ -331,7 +311,6 @@ for i in range(1, len(base_model.layers) + 1):
                 ]
             )
         else:
-            print(f"I am in {temp_arc[iter_]}")
             bounds.extend(
                 [
                     {'name': temp_arc[iter_] + '_filter_size_' + str(iter_ + 1), 'type': 'discrete', 'domain': [1]},
@@ -343,13 +322,16 @@ for i in range(1, len(base_model.layers) + 1):
 
     history = None
     def model_fit_conv(x):
+        """
+        Callback function for GPyOpt optimizer
+        """
+
         global history
 
         filter_sizes = []
         num_filters = []
         stride_sizes = []
 
-        print(x)
         conv_params = OrderedDict()
 
         j = 0
@@ -369,7 +351,8 @@ for i in range(1, len(base_model.layers) + 1):
 
         to_train_model = get_model_conv(temp_model, -len(conv_params) // 3, reverse_list(temp_arc), conv_params, optim_neurons, optim_dropouts, reverse_list(temp_acts))
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        # to_train_model.summary()
+
+        # training the modified model
         in_start = time.time()
         history = to_train_model.fit_generator(
             train_generator,
@@ -386,17 +369,15 @@ for i in range(1, len(base_model.layers) + 1):
         val_loss = history.history['val_loss'][best_acc_index]
         val_acc = history.history['val_acc'][best_acc_index]
 
+        # log the results
         log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons) + 1, optim_neurons, optim_dropouts, filter_sizes, num_filters, stride_sizes, train_loss, train_acc, val_loss, val_acc, in_end - in_start)
-        # try:
-        #     row_index = log_df.index[log_df.num_layers_tuned == 0].tolist()[0]
-        #     log_df.loc[row_index] = log_tuple
-        # except:
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
 
         return min(history.history['val_loss'])
 
 
+    # initialize the GPyOpt optimizer
     opt_ = GPyOpt.methods.BayesianOptimization(f=model_fit_conv, domain=bounds)
     opt_.run_optimization(max_iter=20)
 
@@ -415,5 +396,4 @@ for i in range(1, len(base_model.layers) + 1):
         break
     best_acc = max(temp_acc, best_acc)
 
-    print(f"Finished iteration with unfreeze: {unfreeze}")
     time.sleep(3)

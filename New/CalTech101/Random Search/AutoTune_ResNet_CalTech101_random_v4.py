@@ -20,8 +20,7 @@ from keras.applications import ResNet50
 
 reverse_list = lambda l: list(reversed(l))
 
-DATA_FOLDER = "/media/kishank/Disk 3/shabbeer/CalTech101"
-# DATA_FOLDER = "CalTech101"
+DATA_FOLDER = "CalTech101"
 TRAIN_PATH = os.path.join(DATA_FOLDER, "training") # Path for training data
 VALID_PATH = os.path.join(DATA_FOLDER, "validation") # Path for validation data
 NUMBER_OF_CLASSES = len(os.listdir(TRAIN_PATH)) # Number of classes of the dataset
@@ -37,10 +36,7 @@ valid_generator = datagen.flow_from_directory(VALID_PATH, target_size=(224, 224)
 # creating callbacks for the model
 reduce_LR = callbacks.ReduceLROnPlateau(monitor='val_acc', factor=np.sqrt(0.01), cooldown=0, patience=5, min_lr=0.5e-10)
 
-# adagrad optimizer
-ADAM = optimizers.Adam(lr=0.1, beta_1=0.9, beta_2=0.999, amsgrad=False)
-
-
+# Creating a CSV file if one does not exist
 try:
     log_df = pd.read_csv(RESULTS_PATH, header=0, index_col=['index'])
 except FileNotFoundError:
@@ -48,14 +44,15 @@ except FileNotFoundError:
     log_df = log_df.set_index('index')
 
 
+# utility function
 def upsample(shape, target_size=5):
     upsampling_factor = math.ceil(target_size / shape[1].value)
     return layers.UpSampling2D(size=(upsampling_factor, upsampling_factor))
 
 
+# function to modify architecture for current hyperparams
 def get_model_dense(model, dense_params):
     X = model.layers[-1].output
-    # X = layers.Flatten()(X)
 
     for units, dropout in zip(*dense_params):
         X = layers.Dense(units, activation='relu', kernel_initializer='he_normal')(X)
@@ -66,18 +63,14 @@ def get_model_dense(model, dense_params):
     return models.Model(inputs=model.inputs, outputs=X)
 
 
+# function to modify architecture for current hyperparams
 def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_sizes, acts, zero_pads, optim_neurons, optim_dropouts):
-    # assert optim_neurons and optim_dropouts, "No optimum architecture for dense layers is provided."
     X = model.layers[index - 1].output
-    print(type(model.layers[index - 1]))
 
-    # for i in range(len(conv_params) // 3):
     for i in range(len(architecture)):
         global_index = index + i
         if architecture[i] == 'add':
             continue
-        print(f"global_index: {global_index}")
-        print(f"Layer: {architecture[i]}")
 
         if architecture[i] == 'conv':
             assert type(model.layers[global_index]) == layers.Conv2D
@@ -98,7 +91,6 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
                 X = layers.MaxPooling2D(pool_size=int(pool_size))(X)
         elif architecture[i] == 'globalavgpool':
             assert type(model.layers[global_index]) == layers.GlobalAveragePooling2D
-            # pool_size = pool_sizes.pop(0)
             X = layers.GlobalAveragePooling2D()(X)
         elif architecture[i] == 'batch':
             assert type(model.layers[global_index]) == layers.BatchNormalization
@@ -106,8 +98,6 @@ def get_model_conv(model, index, architecture, num_filters, filter_sizes, pool_s
         elif architecture[i] == 'activation':
             assert type(model.layers[global_index]) == layers.Activation
             X = layers.Activation(acts.pop(0))(X)
-
-    # X = layers.Flatten()(X)
 
     for units, dropout in zip(optim_neurons, optim_dropouts):
         X = layers.Dense(units, kernel_initializer='he_normal', activation='relu')(X)
@@ -122,12 +112,12 @@ base_model = ResNet50(input_shape=(224, 224, 3), weights='imagenet', include_top
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
-## training original model
+# training original model
 X = base_model.layers[-2].output
 X = layers.Dense(NUMBER_OF_CLASSES, activation='softmax', kernel_initializer='he_normal')(X)
 to_train_model = models.Model(inputs=base_model.inputs, outputs=X)
 to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-# to_train_model.summary()
+
 out_start = time.time()
 history = to_train_model.fit_generator(
     train_generator,
@@ -137,22 +127,25 @@ history = to_train_model.fit_generator(
 )
 out_end = time.time()
 
+# freezing the layers of the model
 base_model = ResNet50(input_shape=(224, 224, 3), weights='imagenet', include_top=True)
 base_model = models.Model(inputs=base_model.inputs, outputs=base_model.layers[-2].output)
 for i in range(len(base_model.layers)):
     base_model.layers[i].trainable = False
 
+
 ## optimize dense layers
+# search spaces for each kind of hyperparam
 fc_layer_range = range(1, 3)
 units_space = [2 ** j for j in range(6, 11)]
 dropouts_space = [0.1 * j for j in range(10)]
+
 best_acc = 0
 best_dense_params = None
 
 for num_dense in fc_layer_range:
-    print(f"{num_dense} layers.")
     for _ in range(15):
-        print(f"Current FC architecture:")
+        print(f"Currently trying FC architecture:")
         curr_units = random.sample(units_space, num_dense)
         curr_dropouts = random.sample(dropouts_space, num_dense)
         print(f"\tUnits: {curr_units}")
@@ -160,7 +153,8 @@ for num_dense in fc_layer_range:
 
         to_train_model = get_model_dense(base_model, [curr_units, curr_dropouts])
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        # to_train_model.summary()
+
+        # train the modified model
         in_start = time.time()
         history = to_train_model.fit_generator(
             train_generator,
@@ -173,6 +167,7 @@ for num_dense in fc_layer_range:
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
+        # log the results
         log_tuple = ('relu', 'he_normal', None, num_dense, curr_units, curr_dropouts, None, None, None, None, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index], in_end - in_start)
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
@@ -181,27 +176,28 @@ for num_dense in fc_layer_range:
             best_dense_params = [curr_units, curr_dropouts]
         best_acc = max(temp_acc, best_acc)
 
+
+## optimize conv layers
 optim_neurons, optim_dropouts = best_dense_params
-# optim_neurons, optim_dropouts = [], []
+# list of layers not considered in optimization
 meaningless = [
     layers.Activation,
     layers.GlobalAveragePooling2D,
-    # layers.MaxPooling2D,
     layers.ZeroPadding2D,
     layers.Add,
 ]
-## optimize conv layers
+
 filter_size_space = [2, 3, 5]
 num_filter_space = [64, 128, 256, 512]
 pool_size_space = [2, 3]
 pad_size_space = list(range(1, 5))
 for unfreeze in range(1, len(base_model.layers) + 1):
+    print(f"Tuning last {unfreeze} layers.")
     if type(base_model.layers[-unfreeze]) in meaningless:
         continue
 
     for _ in range(15):
         temp_model = models.Model(inputs=base_model.inputs, outputs=base_model.outputs)
-        print(f"Tuning last {unfreeze} layers.")
         time.sleep(3)
 
         curr_filter_size = []
@@ -209,6 +205,8 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         curr_pool_size = []
         curr_acts = []
         curr_pad = []
+
+        # saving the architecture
         temp_arc = []
         for j in range(1, unfreeze + 1):
             if type(temp_model.layers[-j]) == layers.Conv2D:
@@ -232,11 +230,10 @@ for unfreeze in range(1, len(base_model.layers) + 1):
                 temp_arc.append('zeropad')
                 curr_pad.append(random.sample(pad_size_space, 1)[0])
 
-        print(f"temp_arc: {temp_arc}")
-
         to_train_model = get_model_conv(temp_model, -unfreeze, reverse_list(temp_arc), reverse_list(curr_num_filters), reverse_list(curr_filter_size), reverse_list(curr_pool_size), reverse_list(curr_acts), reverse_list(curr_pad), optim_neurons, optim_dropouts)
         to_train_model.compile(optimizer='adagrad', loss='categorical_crossentropy', metrics=['accuracy'])
-        # to_train_model.summary()
+
+        # train the modified model
         in_start = time.time()
         history = to_train_model.fit_generator(
             train_generator,
@@ -249,6 +246,7 @@ for unfreeze in range(1, len(base_model.layers) + 1):
         best_acc_index = history.history['val_acc'].index(max(history.history['val_acc']))
         temp_acc = history.history['val_acc'][best_acc_index]
 
+        # log the results
         log_tuple = ('relu', 'he_normal', unfreeze, len(optim_neurons), optim_neurons, optim_dropouts, curr_filter_size, curr_num_filters, [1] * len(curr_num_filters), curr_pool_size, history.history['loss'][best_acc_index], history.history['acc'][best_acc_index], history.history['val_loss'][best_acc_index], history.history['val_acc'][best_acc_index], in_end - in_start)
         log_df.loc[log_df.shape[0], :] = log_tuple
         log_df.to_csv(RESULTS_PATH)
